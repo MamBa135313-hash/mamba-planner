@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610050056">
+<meta name="app-v" content="202610050121">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,11 +30,15 @@
   --fs-11: 11px; --fs-12: 12px; --fs-14: 14px; --fs-16: 16px; --fs-18: 18px; --fs-21: 21px; --fs-24: 24px; --fs-36: 36px; --fs-48: 48px; --fs-72: 72px; --fs-clock: 84px;
   --ease: cubic-bezier(.2,.8,.2,1); --spring: cubic-bezier(.34,1.5,.6,1);
   --safe-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+  /* снизу: на iPhone — стандартный отступ браузера, на Android в полноэкранном Telegram — высота системных кнопок,
+     которую сообщает сам Telegram (стандартный там пустой, и меню оказывалось под кнопками ||| ○ ‹) */
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), calc(var(--tg-safe-area-inset-bottom, 0px) + var(--tg-content-safe-area-inset-bottom, 0px)));
   --edge-hi: rgba(255,255,255,.2); --edge-lo: rgba(255,255,255,.035);
   --shadow: 0 24px 48px -20px rgba(0,0,0,.6);
   color-scheme: dark;
 }
 @property --paper { syntax: "<color>"; inherits: true; initial-value: #f3eee2; }
+@property --i { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --paper-2 { syntax: "<color>"; inherits: true; initial-value: #e6dfcd; }
 @property --on-sky { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
 @property --on-sky-2 { syntax: "<color>"; inherits: true; initial-value: rgba(255,255,255,.8); }
@@ -48,7 +52,7 @@ html, body { margin: 0; min-height: 100%; }
 body {
   font: 450 var(--fs-16)/1.45 var(--sans); font-optical-sizing: auto;
   color: var(--text); background: var(--bg); overflow-x: hidden; -webkit-font-smoothing: antialiased;
-  padding-top: var(--safe-top); padding-bottom: calc(120px + env(safe-area-inset-bottom));
+  padding-top: var(--safe-top); padding-bottom: calc(120px + var(--safe-bottom));
 }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, .toggle:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
@@ -259,6 +263,8 @@ main { max-width: 640px; margin: 0 auto; padding: 8px 14px 0; }
 .rev { position: absolute; top: 7px; bottom: 7px; width: 0; border-radius: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; font-size: var(--fs-14); font-weight: 700; transition: width .5s var(--spring); }
 .rev span { transition: transform .3s var(--spring); }
 .task.drag .rev { transition: none; }
+.tk[data-sw] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.task.grab .tk { background: rgba(255,255,255,.07); box-shadow: inset 3px 0 0 var(--paper); }   /* задача «взята» — можно вести */
 .task.arm .rev span { transform: scale(1.15); }
 .rev.l { left: 8px; background: var(--ok); color: #05281b; }
 .rev.r { right: 8px; background: var(--warn); color: #2c1400; }
@@ -332,7 +338,7 @@ main { max-width: 640px; margin: 0 auto; padding: 8px 14px 0; }
 .day .ld i { transform-origin: 50% 100%; }
 html { touch-action: pan-y; }   /* вертикально листает браузер, вбок — свайп между вкладками (карусели, ленты и просмотр файла — свои области прокрутки, у них всё как раньше) */
 nav.dock { touch-action: none; }
-.dock.drag .ind { transition: none; }
+.dock.drag, .noanim nav.dock { transition: none; }
 .calbody .ls .rail::before { transform-origin: 50% 0; }
 .anim > .calbody, .anim > .days.seven { animation: none; }
 #main.anim:is([data-tab="tasks"], [data-tab="cards"], [data-tab="files"]) > * { animation: none; }   /* там всё анимирует JS — каскадом, по самим плиткам */
@@ -420,7 +426,7 @@ nav.dock { touch-action: none; }
 .fpill { border: 0; margin: 0 6px 6px 0; padding: 7px 11px; font-size: var(--fs-12); line-height: 1.3; cursor: pointer; white-space: normal; text-align: left; max-width: 100%; border-radius: 12px; overflow-wrap: anywhere; }
 .fbtns .btn.sq { flex: none; width: 42px; justify-content: center; padding: 10px 0; }
 .viewer { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: rgba(5,7,15,.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  padding: calc(var(--safe-top) + 12px) 0 calc(14px + env(safe-area-inset-bottom)); opacity: 0; pointer-events: none; transition: opacity .3s; }
+  padding: calc(var(--safe-top) + 12px) 0 calc(14px + var(--safe-bottom)); opacity: 0; pointer-events: none; transition: opacity .3s; }
 .viewer.on { opacity: 1; pointer-events: auto; }
 .viewer { background: rgba(5,7,15, calc(.95 * var(--vo, 1))); }
 .vtop { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 18px 10px; min-height: 28px; }
@@ -441,7 +447,7 @@ nav.dock { touch-action: none; }
 .vbar .btn:not(.pri) { background: rgba(255,255,255,.08); }
 
 /* ---------- док ---------- */
-nav.dock { position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 20; max-width: 520px; margin: 0 auto;
+nav.dock { position: fixed; left: 12px; right: 12px; bottom: calc(10px + var(--safe-bottom)); z-index: 20; max-width: 520px; margin: 0 auto;
   display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px; border-radius: 26px; isolation: isolate;
   background: color-mix(in srgb, var(--bg-2) 70%, transparent); backdrop-filter: blur(30px) saturate(190%); -webkit-backdrop-filter: blur(30px) saturate(190%);
   box-shadow: 0 22px 50px -14px rgba(0,0,0,.7), inset 0 1px 0 var(--edge-hi); }
@@ -449,25 +455,27 @@ nav.dock::after { content: ""; position: absolute; inset: 0; border-radius: inhe
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
 .dock .ind { position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / 5); border-radius: 20px; z-index: -1;
   background: var(--paper); box-shadow: 0 10px 22px -12px rgba(0,0,0,.9);
-  transform: translateX(calc(var(--i, 0) * 100%)); transition: transform .6s var(--spring); }
-.nb { position: relative; min-width: 0; border: 0; background: none; color: var(--text-2); font-size: var(--fs-11); font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 6px; transition: color .3s; }
+  transform: translateX(calc(var(--i, 0) * 100%)); }
+/* подложка едет пружиной (переливается сама переменная --i), а подпись и значок темнеют тем сильнее, чем ближе к ним подложка:
+   пока ведёшь пальцем по меню или листаешь вкладки, тёмный цвет перетекает вместе с ней и не теряется на стекле */
+nav.dock { transition: --i .6s var(--spring); }
+.nb { --w: clamp(0, 1 - max(var(--i) - var(--k), var(--k) - var(--i)), 1); position: relative; min-width: 0; border: 0; background: none; color: color-mix(in srgb, var(--paper-ink) calc(var(--w) * 100%), var(--text-2)); font-size: var(--fs-11); font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 6px; }
 .nb span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nb svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; transition: transform .5s var(--spring); }
-.nb.on { color: var(--paper-ink); }
-.nb.on svg { transform: translateY(-1px) scale(1.08); stroke-width: 2.2; }
+.nb svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.nb svg { transform: translateY(calc(var(--w) * -1px)) scale(calc(1 + var(--w) * .08)); }
 .nb:active svg { transform: scale(.82); }
 .nb .dot { position: absolute; top: 2px; left: calc(50% + 5px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--hot); color: #fff; font: 700 var(--fs-11)/18px var(--sans); font-style: normal; text-align: center; box-shadow: 0 0 0 2px var(--bg-2); font-variant-numeric: tabular-nums; }
 .nb .dot:empty { display: none; }
 .nodata nav.dock, .nodata .fab, .nodata .queue { display: none !important; }
-body.hasq { padding-bottom: calc(176px + env(safe-area-inset-bottom)); }   /* плашка «N изменений» не закрывает конец списка */
+body.hasq { padding-bottom: calc(176px + var(--safe-bottom)); }   /* плашка «N изменений» не закрывает конец списка */
 
 /* ---------- кнопка «+», очередь, шторки, тосты ---------- */
-.fab { position: fixed; right: 18px; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 19; width: 56px; height: 56px; border: 0; border-radius: 18px; background: var(--paper); display: grid; place-items: center;
+.fab { position: fixed; right: 18px; bottom: calc(96px + var(--safe-bottom)); z-index: 19; width: 56px; height: 56px; border: 0; border-radius: 18px; background: var(--paper); display: grid; place-items: center;
   box-shadow: 0 16px 30px -12px rgba(0,0,0,.75), inset 0 -2px 0 rgba(0,0,0,.08); transition: transform .45s var(--spring), bottom .45s var(--spring), opacity .3s; }
 .fab.away { transform: translateY(140%) scale(.6); opacity: 0; pointer-events: none; }
 .fab svg { width: 24px; height: 24px; stroke: var(--paper-ink); stroke-width: 2.6; stroke-linecap: round; fill: none; transition: transform .45s var(--spring); }
 .fab:active { transform: scale(.9); } .fab:active svg { transform: rotate(90deg); }
-.queue { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 19; display: flex; align-items: center; gap: 6px; padding: 5px 5px 5px 6px; border-radius: 99px; font-size: var(--fs-14); font-weight: 600;
+.queue { position: fixed; left: 50%; bottom: calc(96px + var(--safe-bottom)); z-index: 19; display: flex; align-items: center; gap: 6px; padding: 5px 5px 5px 6px; border-radius: 99px; font-size: var(--fs-14); font-weight: 600;
   background: color-mix(in srgb, var(--bg-2) 82%, transparent); backdrop-filter: blur(26px) saturate(190%); -webkit-backdrop-filter: blur(26px) saturate(190%); border: 1px solid var(--stroke-2); box-shadow: 0 18px 36px -12px rgba(0,0,0,.7);
   transform: translate(-50%, 24px) scale(.9); opacity: 0; pointer-events: none; transition: all .5s var(--spring); white-space: nowrap; max-width: calc(100% - 24px); }
 .queue.on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
@@ -479,7 +487,7 @@ body.hasq { padding-bottom: calc(176px + env(safe-area-inset-bottom)); }   /* п
 .queue .s { background: var(--paper); color: var(--paper-ink); }
 .scrim { position: fixed; inset: 0; z-index: 30; background: rgba(4,6,14,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity .35s; }
 .scrim.on { opacity: 1; pointer-events: auto; }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; max-width: 640px; margin: 0 auto; padding: 4px 18px calc(22px + env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0; max-height: 88vh; overflow-y: auto; overflow-x: hidden;
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; max-width: 640px; margin: 0 auto; padding: 4px 18px calc(22px + var(--safe-bottom)); border-radius: 28px 28px 0 0; max-height: 88vh; overflow-y: auto; overflow-x: hidden;
   background: color-mix(in srgb, var(--bg-2) 92%, transparent); backdrop-filter: blur(34px) saturate(190%); -webkit-backdrop-filter: blur(34px) saturate(190%);
   box-shadow: 0 -24px 60px -20px rgba(0,0,0,.7), inset 0 1px 0 var(--edge-hi); transform: translateY(105%); transition: transform .55s cubic-bezier(.3,1.2,.5,1); }
 .sheet.on { transform: none; }
@@ -1079,8 +1087,8 @@ function vTasks() {
   const done = all.filter(t => t.done);
   if (done.length) h += card("Отмечено", done.every(t => t.pend === "s") ? "отправлено боту" : "уйдёт боту", taskList(done));
   if (D.regular.length) h += card("Регулярно", "", D.regular.map(r => `<div class="ls" style="--c:var(--accent-2);grid-template-columns:24px 1fr;padding-left:14px"><div class="rail"><i style="top:14px"></i></div><div class="b" style="font-weight:700">${esc(r)}</div></div>`).join(""));
-  if (!store.get("swipeHint", false) && list.some(t => typeof t.id === "number")) {
-    h += `<div class="hint">Свайп по задаче вправо — сделано, влево — на завтра</div>`;
+  if (!store.get("swipeHint2", false) && list.some(t => typeof t.id === "number")) {
+    h += `<div class="hint">Подержи задачу и веди вправо — сделано, влево — на завтра. Быстрый свайп листает вкладки</div>`;
   }
   return h;
 }
@@ -2245,7 +2253,7 @@ function moveSheet(id) {
 // ---------- отрисовка ----------
 function renderNav() {
   const nav = $("nav");
-  if (!nav.childElementCount) nav.innerHTML = '<i class="ind"></i>' + TABS.map(([k, n]) => `<button class="nb" data-tab="${k}">${IC[k]}<span>${n}</span><em class="dot"></em></button>`).join("");
+  if (!nav.childElementCount) nav.innerHTML = '<i class="ind"></i>' + TABS.map(([k, n], j) => `<button class="nb" data-tab="${k}" style="--k:${j}">${IC[k]}<span>${n}</span><em class="dot"></em></button>`).join("");
   const act = D ? tasks().filter(t => !t.done && !isPast(t)) : [], td = today();
   const badge = { today: act.filter(t => t.date && t.date <= td).length, tasks: act.filter(t => t.imp).length, cards: D ? (D.cards || []).reduce((n, d) => n + deckStats(d).due, 0) : 0 };
   nav.querySelectorAll(".nb").forEach(b => { b.classList.toggle("on", b.dataset.tab === tab); b.querySelector(".dot").textContent = badge[b.dataset.tab] || ""; });
@@ -2285,7 +2293,7 @@ function renderQueue() {
   $("qn").textContent = n;
   $("qtext").textContent = n === 1 ? "изменение" : n < 5 ? "изменения" : "изменений";
   $("send").style.display = mb ? "none" : ""; $("queue").classList.toggle("withsend", !mb);
-  $("fab").style.bottom = n ? "calc(152px + env(safe-area-inset-bottom))" : "";
+  $("fab").style.bottom = n ? "calc(152px + var(--safe-bottom))" : "";
   if (mb) { if (n) { tg.MainButton.setParams({ text: "Отправить боту · " + n, color: PAPER, text_color: "#161b2e" }); tg.MainButton.show(); } else tg.MainButton.hide(); }
 }
 function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1900); }
@@ -2337,27 +2345,39 @@ let G = null, noClick = 0;
 // свайп между вкладками (удобно одной рукой): влево — следующая, вправо — предыдущая. Свои жесты не трогаем: карусели и ленты
 // листаются вбок, строки задач свайпаются, карточки для зубрёжки — тоже. В «Календаре» свайп по полосе дней листает недели,
 // а по нижнему меню можно вести пальцем — выделение едет следом.
-const SWIPE_SKIP = ".fpages, .dpages, .tkts, .seg, .hrs, .tk[data-sw], #flip, #cstrip, input, textarea, select";
+// Задача пальцем: быстрый свайп по ней листает вкладки, а чтобы свайпнуть саму задачу, её надо «взять» —
+// подержать TASK_HOLD мс почти не двигая палец (лёгкая отдача, строка подсвечивается), потом вести. Мышью — сразу, как раньше.
+const TASK_HOLD = 400;
+const SWIPE_SKIP = ".fpages, .dpages, .tkts, .seg, .hrs, #flip, #cstrip, input, textarea, select";
 document.addEventListener("pointerdown", e => {
   if (e.button > 0) return;
   const tk = e.target.closest(".tk[data-sw]"), fl = e.target.closest("#flip"), gr = e.target.closest(".sheet .grab");
-  if (tk || fl || gr) {
-    if (tk && e.target.closest("button")) return;
+  if (tk && e.target.closest("button")) return;
+  if ((tk && e.pointerType === "mouse") || fl || gr) {
     G = { el: tk || fl || gr, k: tk ? "task" : fl ? "card" : "sheet", x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, arm: false };
     return;
   }
   if (e.pointerType === "mouse" || !D || viewerOn() || sheetOn()) return;
   const wk = e.target.closest("#cstrip"), dk = e.target.closest("#nav"), tb = !wk && !dk && !study && !e.target.closest(SWIPE_SKIP);
-  if (!wk && !dk && !tb) return;
+  if (!wk && !dk && !tb && !tk) return;
   const i0 = TABS.findIndex(x => x[0] === tab);
-  G = { el: wk || (dk ? $("nav") : document.querySelector(".wrap")), k: wk ? "week" : dk ? "dock" : "tab", x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, arm: false, i0, t0: e.timeStamp };
+  const g = G = { el: wk || (dk ? $("nav") : document.querySelector(".wrap")), k: wk ? "week" : dk ? "dock" : tb ? "tab" : "none", x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, arm: false, i0, t0: e.timeStamp };
+  if (tk) g.hold = setTimeout(() => {
+    if (G !== g || g.lock) return;
+    Object.assign(g, { k: "task", el: tk, x0: g.lx ?? g.x0, y0: g.ly ?? g.y0, dx: 0, dy: 0, grabbed: true });
+    tk.parentElement.classList.add("grab"); haptic("medium");
+  }, TASK_HOLD);
 });
+// долгое нажатие на задаче — это «взять», а не выделение текста или меню
+document.addEventListener("contextmenu", e => { if (e.target.closest(".tk[data-sw]")) e.preventDefault(); });
 document.addEventListener("pointermove", e => {
   if (!G || e.pointerId !== G.id) return;
+  G.lx = e.clientX; G.ly = e.clientY;
   G.dx = e.clientX - G.x0; G.dy = e.clientY - G.y0;
   if (!G.lock) {
     if (Math.hypot(G.dx, G.dy) < 8) return;
-    G.lock = G.k === "sheet" ? "y" : Math.abs(G.dx) > Math.abs(G.dy) * 1.2 ? "x" : "no";
+    clearTimeout(G.hold);   // палец поехал раньше, чем задача «взялась», — это свайп вкладок или прокрутка
+    G.lock = G.k === "sheet" ? "y" : G.k === "none" ? "no" : Math.abs(G.dx) > Math.abs(G.dy) * 1.2 ? "x" : "no";
     if (G.lock === "no") return;
     G.el.style.transition = "none";
     if (G.k === "task") G.el.parentElement.classList.add("drag");
@@ -2393,6 +2413,8 @@ document.addEventListener("pointermove", e => {
 function endGesture(e) {
   if (!G || e.pointerId !== G.id) return;
   const g = G; G = null;
+  clearTimeout(g.hold);
+  if (g.grabbed) { g.el.parentElement.classList.remove("grab"); if (!g.lock) noClick = Date.now(); }   // взял и отпустил на месте — ничего не делаем
   if (!g.lock || g.lock === "no") return;
   noClick = Date.now();
   if (g.k === "task") {
@@ -2401,9 +2423,9 @@ function endGesture(e) {
     const reset = () => { g.el.style.transform = ""; L.style.width = ""; R.style.width = ""; };
     if (g.dx > 96) {
       g.el.style.transform = "translateX(110%)"; L.style.width = "calc(100% - 16px)";
-      store.set("swipeHint", true); markDone(id, L);
+      store.set("swipeHint2", true); markDone(id, L);
     } else if (g.dx < -96) {
-      reset(); store.set("swipeHint", true);
+      reset(); store.set("swipeHint2", true);
       const t = tasks().find(x => x.id === id);
       if (t?.date) addOp({ op: "tmr", id }, "⏰ #" + id + " — на завтра"); else moveSheet(id);
     } else reset();
