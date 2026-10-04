@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610050216">
+<meta name="app-v" content="202610050217">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -469,7 +469,7 @@ nav.dock { transition: --i .6s var(--spring); }
 .nb:active svg { transform: scale(.82); }
 .nb .dot { position: absolute; top: 2px; left: calc(50% + 5px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--hot); color: #fff; font: 700 var(--fs-11)/18px var(--sans); font-style: normal; text-align: center; box-shadow: 0 0 0 2px var(--bg-2); font-variant-numeric: tabular-nums; }
 .nb .dot:empty { display: none; }
-/* пока ведёшь пальцем по меню — над пальцем плашка с вкладкой, на которой окажешься, если отпустить */
+/* пока ведёшь пальцем по меню — над подложкой лупа с вкладкой, на которой окажешься, если отпустить */
 .dtip { position: fixed; z-index: 22; left: 50%; top: 0; display: flex; align-items: center; gap: 7px; padding: 9px 14px 9px 12px; border-radius: 14px; pointer-events: none;
   background: var(--paper); color: var(--paper-ink); font: 650 var(--fs-16)/1 var(--sans); white-space: nowrap; box-shadow: 0 14px 30px -10px rgba(0,0,0,.75);
   transform: translate(-50%, -100%) scale(.85); transform-origin: 50% 100%; opacity: 0; transition: opacity .15s, transform .25s var(--spring); }
@@ -483,6 +483,7 @@ body.hasq { padding-bottom: calc(176px + var(--safe-bottom)); }   /* плашк�
 .fab { position: fixed; right: 18px; bottom: calc(96px + var(--safe-bottom)); z-index: 19; width: 56px; height: 56px; border: 0; border-radius: 18px; background: var(--paper); display: grid; place-items: center;
   box-shadow: 0 16px 30px -12px rgba(0,0,0,.75), inset 0 -2px 0 rgba(0,0,0,.08); transition: transform .45s var(--spring), bottom .45s var(--spring), opacity .3s; }
 .fab.away { transform: translateY(140%) scale(.6); opacity: 0; pointer-events: none; }
+.dockdrag .fab { transform: scale(.7); opacity: 0; pointer-events: none; }
 .fab svg { width: 24px; height: 24px; stroke: var(--paper-ink); stroke-width: 2.6; stroke-linecap: round; fill: none; transition: transform .45s var(--spring); }
 .fab:active { transform: scale(.9); } .fab:active svg { transform: rotate(90deg); }
 .queue { position: fixed; left: 50%; bottom: calc(96px + var(--safe-bottom)); z-index: 19; display: flex; align-items: center; gap: 6px; padding: 5px 5px 5px 6px; border-radius: 99px; font-size: var(--fs-14); font-weight: 600;
@@ -2416,7 +2417,7 @@ document.addEventListener("pointermove", e => {
     const i = Math.max(0, Math.min(TABS.length - 1, G.i0 + G.dx / dockStep())), k = Math.round(i);
     G.el.classList.add("drag"); G.el.style.setProperty("--i", i.toFixed(3));
     if (k !== (G.kk ?? G.i0)) { G.kk = k; haptic("tick"); }
-    dockTip(e.clientX, k);
+    dockTip(i, k);
   } else if (G.k === "card") {
     G.el.style.transform = `translateX(${G.dx}px) rotate(${G.dx / 16}deg)`;
     G.el.querySelector(".stamp.k").style.opacity = clamp(G.dx / 100);
@@ -2427,14 +2428,17 @@ document.addEventListener("pointermove", e => {
 });
 // ширина одной вкладки в нижнем меню (меню — 6 px отступа с каждой стороны, внутри 5 вкладок поровну)
 const dockStep = () => Math.max(1, ($("nav").clientWidth - 12) / TABS.length);
-// плашка над пальцем: x — где палец, k — вкладка, к которой ближе подложка (на неё и перейдём, если отпустить); null — спрятать
-function dockTip(x, k) {
+// лупа над подложкой: i — где сейчас подложка (дробное: между вкладками), k — вкладка, к которой она ближе
+// (на неё и перейдём, если отпустить); null — спрятать. Стоит над центром подложки, за какое место её ни возьми
+function dockTip(i, k) {
   const t = $("dtip");
+  document.body.classList.toggle("dockdrag", k !== null);   // «+» прячется, чтобы лупа на него не налезала
   if (k === null) { t.classList.remove("on"); return; }
   if (t.dataset.k !== String(k)) { t.dataset.k = k; t.innerHTML = IC[TABS[k][0]] + "<span>" + TABS[k][1] + "</span>"; }
+  const r = $("nav").getBoundingClientRect(), x = r.left + 6 + (i + .5) * dockStep();
   const half = t.offsetWidth / 2 + 10, cx = Math.max(half, Math.min(innerWidth - half, x));
-  t.style.left = cx + "px"; t.style.top = ($("nav").getBoundingClientRect().top - 12) + "px";
-  t.style.setProperty("--ax", Math.max(-half + 22, Math.min(half - 22, x - cx)) + "px");   // уголок — над пальцем
+  t.style.left = cx + "px"; t.style.top = (r.top - 12) + "px";
+  t.style.setProperty("--ax", Math.max(-half + 22, Math.min(half - 22, x - cx)) + "px");   // у края экрана лупа упирается, а уголок остаётся над подложкой
   t.classList.add("on");
 }
 function endGesture(e) {
