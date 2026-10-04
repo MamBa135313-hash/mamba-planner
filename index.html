@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041642">
+<meta name="app-v" content="202610041651">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -91,6 +91,7 @@ button:disabled { cursor: default; }
 .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--on-sky-2, var(--text-3)); text-shadow: 0 1px 8px var(--on-sky-sh, transparent); }
 .title { margin: 6px 0 0 -2px; font: 600 36px/1.02 var(--disp); letter-spacing: -.05em; text-shadow: 0 4px 26px var(--on-sky-sh, transparent); overflow-wrap: anywhere; }
 .brief { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+#chatcard { scroll-margin-top: calc(var(--safe-top) + 60px); }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 800; color: var(--text); white-space: nowrap;
   background: var(--glass); border: 1px solid var(--stroke-2); backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%); text-shadow: none; }
 .topbar { position: fixed; left: 0; right: 0; top: 0; z-index: 25; padding: calc(var(--safe-top) + 12px) 20px 12px; text-align: center; font: 600 15px/1.2 var(--disp); letter-spacing: -.02em;
@@ -369,6 +370,23 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 .foot { text-align: center; margin: 28px 0 0; }
 .foot span { display: inline-block; padding: 6px 12px; border-radius: 99px; font-size: 11.5px; font-weight: 700; color: var(--text-3); background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 
+
+/* ---------- чаты: цитата дня и сводка ---------- */
+.quote { position: relative; isolation: isolate; overflow: hidden; margin: 8px 12px 4px; padding: 16px 18px 15px; border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255,95,162,.2), rgba(139,123,255,.16) 60%, rgba(69,220,255,.12)); border: 1px solid rgba(255,95,162,.28); }
+.quote .qm { position: absolute; right: 10px; top: -26px; z-index: -1; font: 700 120px/1 var(--disp); background: var(--grad-hot); -webkit-background-clip: text; background-clip: text; color: transparent; opacity: .45; }
+.quote .ql { font-size: 10.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-3); }
+.quote .qt { margin-top: 8px; font: 600 17px/1.38 var(--disp); letter-spacing: -.03em; overflow-wrap: anywhere; }
+.quote .qa { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.av { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 600 14px var(--disp); color: #fff; background: var(--c); box-shadow: 0 6px 14px -6px var(--c); }
+.qa b { display: block; font-size: 13px; font-weight: 800; }
+.qa small { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-3); margin-top: 1px; }
+.dg { padding: 12px 18px 13px; }
+.dg + .dg { border-top: 1px solid var(--stroke); }
+.dg b { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; }
+.dg b::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+.dg p { margin: 5px 0 0 16px; font-size: 14px; line-height: 1.45; font-weight: 600; color: var(--text-2); }
+.dgmore { display: block; width: calc(100% - 24px); margin: 0 12px 12px; justify-content: center; text-align: center; }
 /* ---------- движение ---------- */
 .anim > * { animation: rise .65s var(--ease) both; }
 .anim > *:nth-child(2) { animation-delay: .05s } .anim > *:nth-child(3) { animation-delay: .1s } .anim > *:nth-child(4) { animation-delay: .15s }
@@ -628,6 +646,24 @@ function tiles(L, T) {
 }
 
 // ---------- экраны ----------
+// сводка по чатам из последней утренней/вечерней сводки бота; сверху — цитата дня
+let chatsOpen = false;
+function chatCard() {
+  const g = D.digest;
+  if (!g) return "";
+  const q = g.quote, col = n => `hsl(${hueOf(n)} 75% 58%)`;
+  let h = "";
+  if (q) {
+    const who = (q.author || "?").replace(/^@\S+ для /, ""), ini = (who.match(/[A-Za-zА-Яа-яЁё0-9@]/) || ["?"])[0].replace("@", "🤖").toUpperCase();
+    h += `<div class="quote"><span class="qm">“</span><div class="ql">💎 Цитата дня</div><div class="qt">${esc(q.text)}</div>
+      <div class="qa"><span class="av" style="--c:${col(who)}">${ini}</span><div><b>${esc(q.author || "")}</b><small>${esc(q.chat || "")}${q.time ? " · " + esc(q.time) : ""}</small></div></div></div>`;
+  }
+  const C = g.chats, show = chatsOpen ? C : C.slice(0, 3);
+  h += show.map(c => `<div class="dg" style="--c:${col(c.name)}"><b>${esc(c.name)}</b><p>${esc(c.text)}</p></div>`).join("");
+  if (C.length > 3) h += `<button class="btn ghost dgmore" data-chats="1">${chatsOpen ? "Свернуть" : "Ещё " + (C.length - 3) + " " + pl(C.length - 3, "чат", "чата", "чатов")}</button>`;
+  return card("💬 В чатах", g.when ? "сводка: " + esc(g.when) : "", h, "var(--grad-hot)").replace("<section ", '<section id="chatcard" ');
+}
+
 function vToday() {
   const t0 = today(), T = tasks().filter(t => !t.done), LL = lessons(t0), L = LL || [], nowM = nowMin();
   let h = focus(L, T, nowM) + tiles(L, T);
@@ -641,6 +677,7 @@ function vToday() {
   h += card("Ближайшие дни", soon.length || "", soon.length ? taskList(soon) : empty("🧘", "На три дня вперёд пусто"), "var(--grad-sun)");
   const imp = T.filter(t => t.imp && t.date && diff(t.date) > 3 && diff(t.date) <= 7);
   if (imp.length) h += card("❗️ Скоро важное", "", taskList(imp), "var(--hot)");
+  h += chatCard();
   return h;
 }
 
@@ -740,7 +777,8 @@ function brief() {
   else { const nd = T.find(t => t.date && t.date > t0); if (nd) c.push(`⏳ #${nd.id} ${relTxt(nd.date)}`); }
   const d = P(t0), bd = D.birthdays.filter(b => b.d === d.getDate() && b.m === d.getMonth() + 1);
   if (bd.length) c.push("🎂 " + bd.map(b => b.name).join(", "));
-  return `<div class="brief">${c.map(x => `<span class="chip">${esc(x)}</span>`).join("")}</div>`;
+  const dg = D.digest ? `<button class="chip" data-scroll="chatcard">${D.digest.quote ? "💎 цитата дня" : "💬 что в чатах"}</button>` : "";
+  return `<div class="brief">${c.map(x => `<span class="chip">${esc(x)}</span>`).join("")}${dg}</div>`;
 }
 function hud() {
   const k = wxKind(), t = W ? Math.round(W.temp) : null, m = nowMin();
@@ -1122,6 +1160,8 @@ document.addEventListener("click", e => {
   if (!el) return;
   const s = el.dataset;
   if (s.tab) { if (tab !== s.tab) haptic("sel"); tab = s.tab; deck = null; selDay = null; openTask = null; render(); scrollTo({ top: 0 }); return; }
+  if (s.scroll) { $(s.scroll)?.scrollIntoView({ behavior: "smooth", block: "start" }); haptic("sel"); return; }
+  if (s.chats) { chatsOpen = !chatsOpen; haptic("sel"); render(false); return; }
   if (s.fp !== undefined) { store.set("focusPage", { d: today(), i: +s.fp }); syncFocus(+s.fp, true); haptic("sel"); return; }
   if (s.go) { const [t, f] = s.go.split(":"); haptic("sel"); tab = t; if (f) filter = f; deck = null; selDay = null; render(); scrollTo({ top: 0 }); return; }
   if (s.done) { el.classList.add("pop"); markDone(+s.done, el); return; }
