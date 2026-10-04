@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041656">
+<meta name="app-v" content="202610041703">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -130,8 +130,6 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .fsw { display: flex; justify-content: center; gap: 4px; padding: 0 0 12px; }
 .fsw button { border: 0; background: none; padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); transition: all .3s var(--ease); }
 .fsw button.on { background: var(--stroke-2); color: var(--text); }
-.then { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 14px; }
-.then small { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-right: 3px; }
 .fx { display: grid; grid-template-columns: 78px 1fr; gap: 16px; align-items: center; }
 .ring { position: relative; width: 78px; height: 78px; }
 .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
@@ -157,14 +155,37 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .ticks { position: relative; height: 14px; margin-top: 8px; font-size: 10.5px; font-weight: 800; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .ticks span { position: absolute; transform: translateX(-50%); }
 
-/* ---------- плитки ---------- */
-.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
-.tile { border: 0; text-align: left; padding: 14px 13px 13px; color: var(--text); border-radius: 22px; transition: transform .35s var(--spring); }
-.tile:active { transform: scale(.95); }
-.tile .ic { position: absolute; right: 11px; top: 11px; width: 28px; height: 28px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: var(--tc); box-shadow: 0 8px 16px -6px var(--ts); }
-.tile .ic svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.tile b { display: block; font: 600 30px/1 var(--disp); letter-spacing: -.05em; margin-top: 4px; }
-.tile .lb { display: block; font-size: 11.5px; font-weight: 800; color: var(--text-2); margin-top: 8px; line-height: 1.25; }
+/* ---------- лента дедлайнов ---------- */
+.lnk { border: 0; background: none; padding: 0; font-size: 12px; font-weight: 800; color: var(--accent-2); }
+.tkts { display: flex; gap: 10px; overflow-x: auto; padding: 10px 14px 16px; scroll-snap-type: x proximity; scroll-padding: 0 14px; scrollbar-width: none; overscroll-behavior-x: contain; }
+.tkts::-webkit-scrollbar { display: none; }
+.tkt { position: relative; isolation: isolate; overflow: hidden; flex: 0 0 150px; height: 176px; scroll-snap-align: start; border: 0; border-radius: 22px; padding: 13px 13px 12px; text-align: left; color: var(--text); display: flex; flex-direction: column;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--uc) 28%, transparent), color-mix(in srgb, var(--uc) 6%, transparent) 75%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px color-mix(in srgb, var(--uc) 32%, transparent), 0 14px 26px -16px var(--uc); transition: transform .4s var(--spring); }
+.tkt:active { transform: scale(.94); }
+.tkt::before { content: ""; position: absolute; left: -34px; top: -34px; width: 120px; height: 120px; border-radius: 50%; z-index: -1; background: radial-gradient(circle, var(--uc), transparent 70%); opacity: .38; }
+.tkt .tr { position: relative; width: 46px; height: 46px; flex: none; }
+.tkt .tr svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.tkt .tr circle { fill: none; stroke-width: 5; stroke-linecap: round; }
+.tkt .tr .bg { stroke: var(--stroke-2); }
+.tkt .tr .fg { stroke: var(--uc); filter: drop-shadow(0 0 4px var(--uc)); }
+.tkt .tr b { position: absolute; inset: 0; display: grid; place-items: center; font: 600 16px/1 var(--disp); letter-spacing: -.04em; }
+.tkt .tu { position: absolute; left: 68px; top: 17px; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--uc); line-height: 1.25; }
+.tkt .tu small { display: block; font-size: 10.5px; letter-spacing: 0; text-transform: none; color: var(--text-2); }
+.tkt .ti { position: absolute; right: 11px; top: 11px; font-style: normal; font-size: 13px; }
+.tkt .pd { position: absolute; right: 13px; bottom: 15px; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.tkt .tx { margin-top: 12px; font-size: 13.5px; font-weight: 800; line-height: 1.32; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tkt .tf { margin-top: auto; padding-top: 8px; font-size: 11px; font-weight: 800; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px; }
+.tkt.all { flex-basis: 100px; align-items: center; justify-content: center; text-align: center; font-size: 12.5px; font-weight: 800; color: var(--text-2); background: var(--stroke); box-shadow: inset 0 0 0 1px var(--stroke-2); }
+.tkt.all::before { display: none; }
+.tkt.all b { display: block; font: 600 26px/1.1 var(--disp); color: var(--text); margin-bottom: 4px; }
+.tsh .cd { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 10px; }
+.tsh .cd b { font: 600 34px/1 var(--disp); letter-spacing: -.05em; color: var(--uc); text-shadow: 0 0 22px color-mix(in srgb, var(--uc) 50%, transparent); }
+.tsh .cd span { font-size: 13px; font-weight: 800; color: var(--text-2); text-transform: uppercase; letter-spacing: .08em; }
+.tsh h4.long { font: 800 18px/1.35 Manrope, sans-serif; letter-spacing: 0; }
+.tsh .tm { margin-top: 10px; }
+.acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+.acts .btn { justify-content: center; padding: 14px 10px; border-radius: 16px; }
 
 /* ---------- пары ---------- */
 .tl { padding: 4px 0 8px; }
@@ -400,7 +421,7 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 @keyframes in-r { from { opacity: 0; transform: translateX(28px); } }
 @keyframes in-l { from { opacity: 0; transform: translateX(-28px); } }
 @media (prefers-reduced-motion: reduce) { .anim > *, .fp::before, .fab::before, .clock i { animation: none !important; } }
-@media (max-width: 360px) { .clock { font-size: 54px; } .wx .temp { font-size: 38px; } .tile b { font-size: 25px; } .nb { font-size: 9px; } }
+@media (max-width: 360px) { .clock { font-size: 54px; } .wx .temp { font-size: 38px; } .nb { font-size: 9px; } }
 </style>
 </head>
 <body>
@@ -596,16 +617,14 @@ function pairPage(L, nowM) {
 }
 function dlPage(T, nowM) {
   const left = t => diff(t.date) * 1440 + mins(t.time || "23:59") - nowM;
-  const up = T.filter(t => t.date && left(t) > 0), nd = up[0];
+  const nd = T.find(t => t.date && left(t) > 0);
   if (!nd) return page("#38e6a6", ringHtml(1, "✓", "чисто"), "Дедлайны", false, "Дедлайнов нет", "можно выдохнуть ✨");
   const m = left(nd), fc = m < 1440 ? "#ff6b6b" : m < 4320 ? "#ffa94d" : "#8b7bff";
   let big, small;
   if (m < 60) { big = m; small = "мин"; }
   else if (m < 2880) { big = Math.floor(m / 60); small = pl(big, "час", "часа", "часов"); }
   else { big = Math.floor(m / 1440); small = pl(big, "день", "дня", "дней"); }
-  const then = up.slice(1, 3).map(t => `<span class="pill">#${t.id} · ${relTxt(t.date)}${t.time ? " " + t.time : ""}</span>`).join("");
-  return page(fc, ringHtml(1 - Math.min(m, 4320) / 4320, big, small), "Ближайший дедлайн", false, nd.text, `#${nd.id} · ${relTxt(nd.date)}${nd.time ? " в " + nd.time : ""}`,
-    then ? `<div class="then"><small>затем</small>${then}</div>` : "");
+  return page(fc, ringHtml(1 - Math.min(m, 4320) / 4320, big, small), "Ближайший дедлайн", false, nd.text, `#${nd.id} · ${relTxt(nd.date)}${nd.time ? " в " + nd.time : ""}`);
 }
 function focus(L, T, nowM) {
   return `<section class="glass focus"><div class="fpages" id="fpages">${pairPage(L, nowM)}${dlPage(T, nowM)}</div>
@@ -656,13 +675,6 @@ function ribbon(L, nowM) {
   const needle = nowM >= s0 && nowM <= e0 ? `<b class="needle" style="left:${X(nowM).toFixed(2)}%"></b>` : "";
   return `<div class="ribbon"><div class="track">${segs}${needle}</div><div class="ticks">${ticks.join("")}</div></div>`;
 }
-function tiles(L, T) {
-  const p = L.filter(l => !l.vuc).length, s3 = T.filter(t => t.date && diff(t.date) >= 0 && diff(t.date) <= 3).length, im = T.filter(t => t.imp).length;
-  const tile = (n, lab, go, c, sh, ic) => `<button class="glass tile" data-go="${go}" style="--tc:${c};--ts:${sh}"><span class="ic">${ic}</span><b>${n}</b><span class="lb">${lab}</span></button>`;
-  return `<div class="tiles">${tile(p, pl(p, "пара", "пары", "пар") + "<br>сегодня", "sched", "var(--grad)", "rgba(139,123,255,.9)", IC.sched)}${
-    tile(s3, pl(s3, "дедлайн", "дедлайна", "дедлайнов") + "<br>за 3 дня", "tasks:soon", "var(--grad-sun)", "rgba(255,150,80,.9)", IC.clock)}${
-    tile(im, pl(im, "важный", "важных", "важных") + "<br>" + pl(im, "дедлайн", "дедлайна", "дедлайнов"), "tasks:imp", "var(--grad-hot)", "rgba(255,93,108,.9)", IC.bolt)}</div>`;
-}
 
 // ---------- экраны ----------
 // сводка по чатам из последней утренней/вечерней сводки бота; сверху — цитата дня
@@ -683,19 +695,53 @@ function chatCard() {
   return card("💬 В чатах", g.when ? "сводка: " + esc(g.when) : "", h, "var(--grad-hot)").replace("<section ", '<section id="chatcard" ');
 }
 
+// лента дедлайнов на главной: мини-карточки с кольцом-таймером, листаются вбок; нажатие — шторка задачи
+const leftMin = t => diff(t.date) * 1440 + mins(t.time || "23:59") - nowMin();
+const ucol = m => m <= 0 ? "#ff4d6d" : m < 1440 ? "#ff6b6b" : m < 4320 ? "#ffa94d" : "#8b7bff";
+function cdown(m) {
+  if (m <= 0) return ["!", "прошло"];
+  if (m < 60) return [m, "мин"];
+  if (m < 2880) { const h = Math.floor(m / 60); return [h, pl(h, "час", "часа", "часов")]; }
+  const d = Math.floor(m / 1440); return [d, pl(d, "день", "дня", "дней")];
+}
+function ticket(t) {
+  const m = leftMin(t), [n, u] = cdown(m), C = 2 * Math.PI * 19, pct = m <= 0 ? 1 : 1 - Math.min(m, 10080) / 10080;
+  return `<button class="tkt" data-tkt="${t.id}" style="--uc:${ucol(m)}">
+    <div class="tr"><svg viewBox="0 0 46 46"><circle class="bg" cx="23" cy="23" r="19"/><circle class="fg" cx="23" cy="23" r="19" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct)).toFixed(1)}"/></svg><b>${n}</b></div>
+    <span class="tu">${u}<small>${relTxt(t.date)}</small></span>${t.imp ? '<i class="ti">❗️</i>' : ""}${t.pend ? '<i class="pd"></i>' : ""}
+    <div class="tx">${esc(t.text)}</div>
+    <div class="tf">${typeof t.id === "number" ? "#" + t.id + " · " : ""}${short(t.date)}${t.time ? " · " + t.time : ""}</div></button>`;
+}
+function dlStrip(T) {
+  const L = T.filter(t => t.date && diff(t.date) <= 7);
+  const all = `<button class="lnk" data-go="tasks">все ${T.length} →</button>`;
+  if (!L.length) return card("Дедлайны", all, empty("🧘", "На неделю вперёд пусто"), "var(--grad-sun)");
+  const rest = T.length - L.length;
+  return card("Дедлайны", all, `<div class="tkts">${L.map(ticket).join("")}${rest ? `<button class="tkt all" data-go="tasks"><b>+${rest}</b>${pl(rest, "задача", "задачи", "задач")}<br>позже</button>` : ""}</div>`, "var(--grad-sun)");
+}
+function taskSheet(id) {
+  const t = tasks().find(x => String(x.id) === String(id));
+  if (!t) return;
+  const nid = typeof t.id === "number" ? t.id : null, m = t.date ? leftMin(t) : null;
+  const [n, u] = m === null ? ["∞", "без срока"] : cdown(m);
+  const pills = [];
+  if (nid !== null) pills.push(`<span class="pill">#${nid}</span>`);
+  if (t.date) pills.push(`<span class="pill">${t.approx ? "~" : ""}${short(t.date)}${t.time ? " · " + t.time : ""}</span>`);
+  if (t.imp) pills.push('<span class="pill hot">❗️ важно</span>');
+  if (t.pend) pills.push('<span class="pill ok">ждёт бота</span>');
+  sheet(`<div class="tsh" style="--uc:${m === null ? "var(--accent)" : ucol(m)}">
+    <div class="cd"><b>${n}</b><span>${u}${t.date ? " · " + relTxt(t.date) : ""}</span></div>
+    <h4 class="${t.text.length > 60 ? "long" : ""}">${esc(t.text)}</h4><div class="tm">${pills.join("")}</div>
+    ${t.src ? `<p style="margin-top:10px">${esc(t.src)}</p>` : ""}
+    ${(t.files || []).map(f => `<div class="pill acc" style="margin:0 6px 6px 0">📎 ${esc(f.name)}</div>`).join("")}
+    ${nid !== null ? `<div class="acts"><button class="btn pri" data-done="${nid}">✓ Сделано</button>${t.date ? `<button class="btn" data-tmr="${nid}">⏰ На завтра</button>` : ""}<button class="btn" data-move="${nid}">📅 Перенести</button><button class="btn" data-imp="${nid}">${t.imp ? "Снять ❗️" : "❗️ Важно"}</button></div>` : ""}</div>`);
+}
+
 function vToday() {
   const t0 = today(), T = tasks().filter(t => !t.done), LL = lessons(t0), L = LL || [], nowM = nowMin();
-  let h = focus(L, T, nowM) + tiles(L, T);
+  let h = focus(L, T, nowM) + dlStrip(T);
   const due = T.filter(t => t.date === t0);
   if (L.length || LL === null) h += card("Пары", L.length ? `${L.length} ${pl(L.length, "занятие", "занятия", "занятий")}` : "", timeline(t0, due));
-  const over = T.filter(t => t.date && diff(t.date) < 0);
-  if (over.length) h += card("Просрочено", over.length, taskList(over), "var(--hot)");
-  const rest = due.filter(t => !(t.time && L.some(l => l.s === t.time)));
-  if (rest.length) h += card("Сегодня", rest.length, taskList(rest), "var(--grad-hot)");
-  const soon = T.filter(t => t.date && diff(t.date) >= 1 && diff(t.date) <= 3);
-  h += card("Ближайшие дни", soon.length || "", soon.length ? taskList(soon) : empty("🧘", "На три дня вперёд пусто"), "var(--grad-sun)");
-  const imp = T.filter(t => t.imp && t.date && diff(t.date) > 3 && diff(t.date) <= 7);
-  if (imp.length) h += card("❗️ Скоро важное", "", taskList(imp), "var(--hot)");
   h += chatCard();
   return h;
 }
@@ -1183,7 +1229,9 @@ document.addEventListener("click", e => {
   if (s.dp !== undefined) { syncChats(+s.dp, true); return; }
   if (s.fp !== undefined) { store.set("focusPage", { d: today(), i: +s.fp }); syncFocus(+s.fp, true); haptic("sel"); return; }
   if (s.go) { const [t, f] = s.go.split(":"); haptic("sel"); tab = t; if (f) filter = f; deck = null; selDay = null; render(); scrollTo({ top: 0 }); return; }
-  if (s.done) { el.classList.add("pop"); markDone(+s.done, el); return; }
+  if (s.tkt !== undefined) { haptic("light"); taskSheet(s.tkt); return; }
+  if (s.done) { el.classList.add("pop"); markDone(+s.done, el); if (el.closest(".sheet")) setTimeout(closeSheet, 250); return; }
+  if ((s.tmr || s.imp) && el.closest(".sheet")) closeSheet();
   if (s.tmr) { addOp({ op: "tmr", id: +s.tmr }, "⏰ #" + s.tmr + " — на завтра"); return; }
   if (s.move) { moveSheet(+s.move); return; }
   if (s.imp) { const t = tasks().find(x => x.id === +s.imp); addOp({ op: "imp", id: +s.imp, value: !t.imp }, t.imp ? "Пометка снята" : "❗️ Отмечено важным"); return; }
