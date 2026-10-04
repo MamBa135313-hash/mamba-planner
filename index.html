@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041703">
+<meta name="app-v" content="202610041709">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -163,6 +163,9 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
   background: linear-gradient(160deg, color-mix(in srgb, var(--uc) 28%, transparent), color-mix(in srgb, var(--uc) 6%, transparent) 75%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px color-mix(in srgb, var(--uc) 32%, transparent), 0 14px 26px -16px var(--uc); transition: transform .4s var(--spring); }
 .tkt:active { transform: scale(.94); }
+/* ближайший дедлайн уже крупно наверху (страница «Дедлайны») — в ленте не повторяем */
+.fdl .tkt.lead { display: none; }
+.tkt.solo { display: none; flex-basis: 100%; } .fdl .tkt.solo { display: flex; height: auto; padding: 18px; }
 .tkt::before { content: ""; position: absolute; left: -34px; top: -34px; width: 120px; height: 120px; border-radius: 50%; z-index: -1; background: radial-gradient(circle, var(--uc), transparent 70%); opacity: .38; }
 .tkt .tr { position: relative; width: 46px; height: 46px; flex: none; }
 .tkt .tr svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
@@ -642,6 +645,7 @@ function syncFocus(i, smooth) {
   syncFocus.prog = Date.now();
   el.scrollTo({ left: i * el.clientWidth, behavior: smooth ? "smooth" : "auto" });
   document.querySelectorAll(".fsw button").forEach((b, k) => b.classList.toggle("on", k === i));
+  $("main").classList.toggle("fdl", i === 1);
 }
 function syncChats(i, smooth) {
   const el = $("dpages"); if (!el) return;
@@ -662,6 +666,7 @@ document.addEventListener("scroll", e => {
   if (e.target.id !== "fpages") return;
   const el = e.target, i = Math.round(el.scrollLeft / el.clientWidth);
   document.querySelectorAll(".fsw button").forEach((b, k) => b.classList.toggle("on", k === i));
+  $("main").classList.toggle("fdl", i === 1);
   if (Date.now() - (syncFocus.prog || 0) < 700) return; // прокрутили мы сами, а не свайп
   clearTimeout(syncFocus.t);
   syncFocus.t = setTimeout(() => { if (i !== focusPage()) { store.set("focusPage", { d: today(), i }); haptic("sel"); } }, 140);
@@ -702,11 +707,11 @@ function cdown(m) {
   if (m <= 0) return ["!", "прошло"];
   if (m < 60) return [m, "мин"];
   if (m < 2880) { const h = Math.floor(m / 60); return [h, pl(h, "час", "часа", "часов")]; }
-  const d = Math.floor(m / 1440); return [d, pl(d, "день", "дня", "дней")];
+  const d = Math.round(m / 1440); return [d, pl(d, "день", "дня", "дней")]; // 2 дня 15 часов — «3 дня», как и «через 3 дня»
 }
-function ticket(t) {
+function ticket(t, lead) {
   const m = leftMin(t), [n, u] = cdown(m), C = 2 * Math.PI * 19, pct = m <= 0 ? 1 : 1 - Math.min(m, 10080) / 10080;
-  return `<button class="tkt" data-tkt="${t.id}" style="--uc:${ucol(m)}">
+  return `<button class="tkt ${lead ? "lead" : ""}" data-tkt="${t.id}" style="--uc:${ucol(m)}">
     <div class="tr"><svg viewBox="0 0 46 46"><circle class="bg" cx="23" cy="23" r="19"/><circle class="fg" cx="23" cy="23" r="19" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct)).toFixed(1)}"/></svg><b>${n}</b></div>
     <span class="tu">${u}<small>${relTxt(t.date)}</small></span>${t.imp ? '<i class="ti">❗️</i>' : ""}${t.pend ? '<i class="pd"></i>' : ""}
     <div class="tx">${esc(t.text)}</div>
@@ -717,7 +722,8 @@ function dlStrip(T) {
   const all = `<button class="lnk" data-go="tasks">все ${T.length} →</button>`;
   if (!L.length) return card("Дедлайны", all, empty("🧘", "На неделю вперёд пусто"), "var(--grad-sun)");
   const rest = T.length - L.length;
-  return card("Дедлайны", all, `<div class="tkts">${L.map(ticket).join("")}${rest ? `<button class="tkt all" data-go="tasks"><b>+${rest}</b>${pl(rest, "задача", "задачи", "задач")}<br>позже</button>` : ""}</div>`, "var(--grad-sun)");
+  const nd = T.find(t => t.date && leftMin(t) > 0);
+  return card("Дедлайны", all, `<div class="tkts">${L.map(t => ticket(t, t === nd)).join("")}${L.every(t => t === nd) ? `<button class="tkt all solo" data-go="tasks"><b>🧘</b>других дедлайнов на неделе нет</button>` : ""}${rest ? `<button class="tkt all" data-go="tasks"><b>+${rest}</b>${pl(rest, "задача", "задачи", "задач")}<br>позже</button>` : ""}</div>`, "var(--grad-sun)");
 }
 function taskSheet(id) {
   const t = tasks().find(x => String(x.id) === String(id));
