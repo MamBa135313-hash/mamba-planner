@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041632">
+<meta name="app-v" content="202610041637">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -483,11 +483,15 @@ function lessons(ds) {
   const wd = (P(ds).getDay() + 6) % 7;
   for (const v of S.vuc || []) if (v.wd === wd) {
     const r = v.text.match(/^(\d{2}:\d{2})[–-](\d{2}:\d{2})/);
-    const rest = v.text.replace(/^\d{2}:\d{2}[–-]\d{2}:\d{2}\s*/, "");
-    out.push({ s: r ? r[1] : v.time, e: r ? r[2] : endOf(v.time, 80), n: rest.split(",")[0].replace(/\s*\(.*$/, "") || "ВУЦ", m: rest, vuc: true });
+    const rest = v.text.replace(/^\d{2}:\d{2}[–-]\d{2}:\d{2}\s*/, ""), name = rest.split(/[,:]/)[0].replace(/\s*\(.*$/, "") || "ВУЦ";
+    // длинный блок ВУЦ (например, 09:00–15:50) — это несколько пар по стандартной сетке
+    const slots = r ? SLOTS.filter(t => mins(t) >= mins(r[1]) && mins(t) + 80 <= mins(r[2])) : [];
+    if (slots.length > 1) slots.forEach((t, i) => out.push({ s: t, e: endOf(t, 80), n: name + " · " + (i + 1) + " пара", m: i ? "" : (rest.match(/построение.*$/i) || [""])[0], vuc: true }));
+    else out.push({ s: r ? r[1] : v.time, e: r ? r[2] : endOf(v.time, 80), n: name, m: rest, vuc: true });
   }
   return out.sort((a, b) => a.s.localeCompare(b.s));
 }
+const SLOTS = ["09:00", "10:35", "12:55", "14:30", "16:00", "17:30", "18:55"]; // стандартная сетка пар МГИМО
 function endOf(t, d) { return hhmm(mins(t) + d); }
 
 // ---------- кусочки интерфейса ----------
