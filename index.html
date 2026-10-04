@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041731">
+<meta name="app-v" content="202610041845">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -328,13 +328,18 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .file .btn { justify-content: center; }
 .fbtns { display: flex; gap: 8px; } .fbtns .btn { white-space: nowrap; } .fbtns .btn.pri { flex: 1; }
 .fpill { border: 0; margin: 0 6px 6px 0; padding: 6px 10px; font-size: 12px; cursor: pointer; }
-.viewer { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
-  padding: calc(var(--safe-top) + 16px) 12px calc(20px + env(safe-area-inset-bottom)); background: rgba(3,4,10,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  opacity: 0; pointer-events: none; transition: opacity .3s; }
+.fbtns .btn.sq { flex: none; width: 46px; justify-content: center; padding: 10px 0; }
+.viewer { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: rgba(3,4,10,.94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  padding: calc(var(--safe-top) + 12px) 0 calc(14px + env(safe-area-inset-bottom)); opacity: 0; pointer-events: none; transition: opacity .3s; }
 .viewer.on { opacity: 1; pointer-events: auto; }
-.viewer img { max-width: 100%; max-height: calc(100% - 70px); object-fit: contain; border-radius: 16px; box-shadow: 0 30px 60px -20px #000; transform: scale(.94); transition: transform .45s var(--spring); }
-.viewer.on img { transform: none; }
-.vbar { display: flex; gap: 10px; } .vbar .btn { padding: 12px 18px; }
+.vbody { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 0 12px; -webkit-overflow-scrolling: touch; }
+.vbody img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 16px; box-shadow: 0 30px 60px -20px #000; animation: rise .45s var(--spring); }
+.vbody .pdf { align-self: flex-start; display: flex; flex-direction: column; gap: 10px; padding: 4px 0 10px; }
+.vbody .pdf canvas { border-radius: 10px; box-shadow: 0 16px 30px -14px #000; background: #fff; max-width: 100%; }
+.vspin { position: absolute; left: 50%; top: 45%; width: 38px; height: 38px; margin: -19px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: var(--accent-2); animation: rot .8s linear infinite; display: none; }
+.viewer.busy .vspin { display: block; }
+@keyframes rot { to { transform: rotate(360deg); } }
+.vbar { display: flex; justify-content: center; gap: 10px; padding-top: 12px; } .vbar .btn { padding: 12px 16px; }
 
 /* ---------- док ---------- */
 nav.dock { position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 20; max-width: 520px; margin: 0 auto;
@@ -450,7 +455,7 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 <nav class="dock" id="nav"></nav>
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet"></div>
-<div class="viewer" id="viewer"><img id="vimg" alt=""><div class="vbar"><button class="btn" data-vclose>✕ Закрыть</button><button class="btn pri" data-vdl>⬇️ Скачать</button></div></div>
+<div class="viewer" id="viewer"><div class="vbody" id="vbody"></div><div class="vspin"></div><div class="vbar"><button class="btn" data-vclose>✕</button><button class="btn pri" data-vdl>⬇️ Сохранить</button><button class="btn" data-vsend>📩 В чат</button></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -517,11 +522,12 @@ const hueOf = s => { let h = 11; for (const ch of String(s)) h = (h * 33 + ch.ch
 const colOf = l => l.vuc ? "#ffb547" : `hsl(${hueOf(l.n)} 85% 66%)`;
 
 // ---------- данные ----------
+let KEY = null; // ключ планера: им же расшифровываются файлы
 async function load() {
   const k = QS.get("k");
   if (!k) throw new Error("Открой планер кнопкой «📅 Планер» в чате с ботом.");
   const raw = Uint8Array.from(atob(k.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((k.length + 3) % 4)), c => c.charCodeAt(0));
-  const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+  const key = KEY = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
   const res = await fetch("data.enc?t=" + Date.now(), { cache: "no-store" });
   if (!res.ok) throw new Error("Бот ещё не опубликовал данные.");
   const enc = await res.json(), b = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -751,7 +757,7 @@ function taskSheet(id) {
     <div class="cd"><b>${n}</b><span>${u}${t.date ? " · " + relTxt(t.date) : ""}</span></div>
     <h4 class="${t.text.length > 60 ? "long" : ""}">${esc(t.text)}</h4><div class="tm">${pills.join("")}</div>
     ${t.src ? `<p style="margin-top:10px">${esc(t.src)}</p>` : ""}
-    ${(t.files || []).map(f => { const g = fileBy(f.path); return g?.url ? `<button class="pill acc fpill" data-fview="${esc(f.path)}">📎 ${esc(f.name)} · открыть</button>` : `<div class="pill acc" style="margin:0 6px 6px 0">📎 ${esc(f.name)}</div>`; }).join("")}
+    ${(t.files || []).map(f => { const g = fileBy(f.path); return g?.enc ? `<button class="pill acc fpill" data-${viewable(g) ? "fview" : "fdl"}="${esc(f.path)}">📎 ${esc(f.name)} · ${viewable(g) ? "открыть" : "сохранить"}</button>` : `<div class="pill acc" style="margin:0 6px 6px 0">📎 ${esc(f.name)}</div>`; }).join("")}
     ${nid !== null ? `<div class="acts"><button class="btn pri" data-done="${nid}">✓ Сделано</button>${t.date ? `<button class="btn" data-tmr="${nid}">⏰ На завтра</button>` : ""}<button class="btn" data-move="${nid}">📅 Перенести</button><button class="btn" data-imp="${nid}">${t.imp ? "Снять ❗️" : "❗️ Важно"}</button></div>` : ""}</div>`);
 }
 
@@ -842,21 +848,68 @@ function vFiles() {
   if (!f.length) return `<section class="glass card">${empty("📎", "Файлов пока нет — они появятся, когда к задачам прикрепят материалы")}</section>`;
   return `<div class="files">${f.map(x => { const [n, c] = ftype(x); return `<div class="glass file"><div class="ty" style="--fc:${c}">${n}</div>
     <div class="fn">${esc(x.name)}</div><div class="ft">#${x.task} · ${esc(x.task_text.slice(0, 44))}</div>
-    ${x.url ? `<div class="fbtns">${x.kind === "photo" || extOf(x) === "pdf" ? `<button class="btn" data-fview="${esc(x.path)}">👁</button>` : ""}<button class="btn pri" data-fdl="${esc(x.path)}">⬇️ Скачать</button></div>`
-      : `<button class="btn" data-file="${esc(x.path)}" data-task="${x.task}" ${x.path ? "" : "disabled"}>📩 В чат</button>`}</div>`; }).join("")}</div>`;
+    <div class="fbtns">${x.enc ? (viewable(x) ? `<button class="btn pri" data-fview="${esc(x.path)}">👁 Открыть</button>` : `<button class="btn pri" data-fdl="${esc(x.path)}">⬇️ Сохранить</button>`) : ""}
+      <button class="btn ${x.enc ? "sq" : ""}" data-file="${esc(x.path)}" data-task="${x.task}" ${x.path ? "" : "disabled"} aria-label="Прислать в чат">📩${x.enc ? "" : " В чат"}</button></div></div>`; }).join("")}</div>`;
 }
-// файлы открываются и скачиваются сразу с сайта планера (адреса секретные, приходят в зашифрованных данных)
+// файлы лежат на сайте планера зашифрованными (e/….bin) и расшифровываются здесь же, ключом из ссылки
 const fileBy = path => (D.files || []).find(f => f.path === path);
-const fileUrl = f => new URL(f.url, location.href).href; // относительный адрес: ключ из ссылки (?k=…) в него не попадает
-function dlFile(f) {
-  const name = (/\.\w{2,5}$/.test(f.name) ? f.name : f.name + "." + f.url.split(".").pop()).replace(/[\\/:*?"<>|«»]/g, "").trim().slice(0, 120);
-  haptic("light");
-  if (tg?.downloadFile && tg.isVersionAtLeast?.("8.0")) tg.downloadFile({ url: fileUrl(f), file_name: name });
-  else if (tg?.openLink) tg.openLink(fileUrl(f)); else open(fileUrl(f));
+const MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", pdf: "application/pdf", txt: "text/plain",
+  doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation", xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+const viewable = f => f.kind === "photo" || extOf(f) === "pdf";
+const fname = f => { const e = extOf(f) || (f.kind === "photo" ? "jpg" : "bin"); const n = f.name.replace(/[\\/:*?"<>|«»]/g, "").trim().slice(0, 100) || "file"; return /\.\w{2,5}$/.test(n) ? n : n + "." + e; };
+const blobs = {};
+async function fileBlob(f) {
+  if (blobs[f.path]) return blobs[f.path];
+  const r = await fetch(f.enc, { cache: "force-cache" });
+  if (!r.ok) throw new Error("нет файла");
+  const buf = new Uint8Array(await r.arrayBuffer());
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, KEY, buf.slice(12));
+  return (blobs[f.path] = new Blob([plain], { type: MIME[extOf(f)] || (f.kind === "photo" ? "image/jpeg" : "application/octet-stream") }));
 }
-function viewFile(f) {
-  if (f.kind !== "photo") { if (extOf(f) === "pdf" && tg?.openLink) tg.openLink(fileUrl(f)); else dlFile(f); return; }
-  $("vimg").src = fileUrl(f); $("viewer").dataset.path = f.path; $("viewer").classList.add("on"); haptic("light");
+function loading(on) { $("viewer").classList.toggle("busy", on); }
+async function viewFile(f) {
+  const v = $("viewer"); v.dataset.path = f.path; $("vbody").innerHTML = ""; v.classList.add("on"); loading(true); haptic("light");
+  try {
+    const b = await fileBlob(f);
+    if (b.type === "application/pdf") await renderPdf(b);
+    else $("vbody").innerHTML = `<img src="${URL.createObjectURL(b)}" alt="">`;
+  } catch (e) { $("vbody").innerHTML = `<div class="msg"><b>😕</b>Не удалось открыть — нажми 📩, бот пришлёт файл в чат</div>`; }
+  loading(false);
+}
+// PDF рисуем сами (pdf.js): встроенного просмотрщика PDF в Telegram на телефоне нет
+let pdfjs = null;
+function loadPdfJs() {
+  if (pdfjs) return pdfjs;
+  return pdfjs = new Promise((ok, no) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; ok(pdfjsLib); };
+    sc.onerror = () => { pdfjs = null; no(new Error("pdf.js")); };
+    document.head.appendChild(sc);
+  });
+}
+async function renderPdf(b) {
+  const lib = await loadPdfJs(), doc = await lib.getDocument({ data: new Uint8Array(await b.arrayBuffer()) }).promise;
+  const box = $("vbody"), w = Math.min(box.clientWidth || innerWidth, 900), dpr = Math.min(devicePixelRatio || 1, 2);
+  box.innerHTML = `<div class="pdf"></div>`;
+  for (let i = 1; i <= Math.min(doc.numPages, 60); i++) {
+    const pg = await doc.getPage(i), vp0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: w / vp0.width * dpr });
+    const c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height; c.style.width = w + "px";
+    box.firstChild.appendChild(c);
+    await pg.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+    if (i === 1) loading(false);
+  }
+}
+// сохранить: на iPhone — системное меню «Поделиться» (сохранить в Файлы/Фото, переслать), иначе — обычное скачивание
+async function dlFile(f) {
+  haptic("light");
+  try {
+    const b = await fileBlob(f), file = new File([b], fname(f), { type: b.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new File([b], fname(f), { type: b.type })); a.download = fname(f); a.rel = "noopener"; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 4000);
+    toast("⬇️ Если файл не сохранился — нажми 📩, бот пришлёт его в чат");
+  } catch (e) { if (e && e.name !== "AbortError") toast("Не получилось — нажми 📩, бот пришлёт в чат"); }
 }
 
 // ---------- шапка ----------
@@ -1276,6 +1329,7 @@ document.addEventListener("click", e => {
   if (s.fview) { const f = fileBy(s.fview); if (f) viewFile(f); return; }
   if (s.vclose !== undefined) { $("viewer").classList.remove("on"); return; }
   if (s.vdl !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) dlFile(f); return; }
+  if (s.vsend !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) { $("viewer").classList.remove("on"); addOp({ op: "send_file", path: f.path, task: f.task }, "📩 Придёт в чат после отправки"); } return; }
   if (s.file !== undefined) { addOp({ op: "send_file", path: s.file, task: +s.task }, "📩 Придёт в чат после отправки"); return; }
   if (s.qd !== undefined) { draft.date = s.qd || null; document.querySelectorAll("#nq .btn").forEach(b => b.classList.toggle("on", b === el)); const di = $("ndate"); if (di) di.value = s.qd; haptic("sel"); return; }
   if (s.tg === "imp") { draft.imp = !draft.imp; $("nimp").classList.toggle("on", draft.imp); haptic("sel"); return; }
