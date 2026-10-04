@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041712">
+<meta name="app-v" content="202610041719">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -970,8 +970,6 @@ function applyScene() {
   R.setProperty("--on-sky-2", dark ? "rgba(255,255,255,.72)" : "rgba(15,20,48,.62)");
   R.setProperty("--on-sky-sh", dark ? "rgba(0,0,0,.35)" : "rgba(255,255,255,.35)");
   document.documentElement.classList.toggle("scene-dark", dark);
-  // стекло следует за небом: днём светлое, ночью и в непогоду тёмное
-  document.documentElement.classList.toggle("light", !dark);
   try { tg?.setHeaderColor?.(top); tg?.setBackgroundColor?.(bot); } catch (e) {}
 }
 function applySky() {
