@@ -1,1 +1,1 @@
-# mamba-planner
+# planner
