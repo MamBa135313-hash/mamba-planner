@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610042043">
+<meta name="app-v" content="202610042108">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -124,9 +124,12 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .focus { margin-top: 8px; overflow: hidden; }
 .fpages { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .fpages::-webkit-scrollbar { display: none; }
-.fp { position: relative; isolation: isolate; overflow: hidden; flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; padding: 18px 18px 14px; display: flex; flex-direction: column; justify-content: center; }
-.fp::before { content: ""; position: absolute; right: -25%; top: -60%; width: 75%; aspect-ratio: 1; border-radius: 50%; z-index: -1;
-  background: radial-gradient(circle, var(--fc) 0%, transparent 65%); opacity: .32; animation: breathe 6s ease-in-out infinite alternate; }
+.fp { position: relative; flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; padding: 18px 18px 14px; display: flex; flex-direction: column; justify-content: center; will-change: opacity, transform; }
+/* свечение — одно на всю плашку: при свайпе цвет страницы плавно перетекает в цвет следующей, без резкой границы */
+.fgw { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.fgw i { position: absolute; inset: 0; }
+.fgw i::before { content: ""; position: absolute; right: -25%; top: -60%; width: 75%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, var(--g) 0%, transparent 65%); opacity: .32; animation: breathe 6s ease-in-out infinite alternate; }
 @keyframes breathe { to { transform: translate(-10%, 8%) scale(1.15); opacity: .45; } }
 .fsw { display: flex; justify-content: center; gap: 4px; padding: 0 0 12px; }
 .fsw button { border: 0; background: none; padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); transition: all .3s var(--ease); }
@@ -284,6 +287,18 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .wk b svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px; margin-right: 4px; }
 .days.seven { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; overflow: visible; margin: 0; padding: 8px 0 12px; }
 .days.seven .day { width: auto; border-radius: 18px; }
+/* выделение дня — «пилюля», которая переезжает к выбранному дню */
+.days.seven { position: relative; }
+.days.seven .dsel { position: absolute; top: 8px; bottom: 12px; left: 0; width: calc((100% - 36px) / 7); border-radius: 18px; z-index: 0; pointer-events: none;
+  background: var(--grad); box-shadow: 0 16px 30px -10px rgba(139,123,255,.85), inset 0 1px 0 rgba(255,255,255,.4);
+  transform: translateX(calc(var(--i, 0) * (100% + 6px))) translateY(-3px); transform-origin: 50% 50%; }
+.days.seven .day.on { background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; transform: translateY(-3px); }
+.days.seven .day.on::after { opacity: 0; }
+.days.seven .day { transition: transform .45s var(--spring), background .3s; }
+.day .ld i { transform-origin: 50% 100%; }
+.calbody { touch-action: pan-y; }
+.calbody .ls .rail::before { transform-origin: 50% 0; }
+.anim > .calbody, .anim > .days.seven { animation: none; }
 .wk b small { display: block; text-align: center; font: 800 10px Manrope, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-top: 3px; }
 .bd { display: flex; align-items: center; gap: 14px; padding: 12px 18px 16px; font-weight: 800; }
 .bd b { font-size: 30px; }
@@ -501,7 +516,7 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.985); } }
 @keyframes in-r { from { opacity: 0; transform: translateX(28px); } }
 @keyframes in-l { from { opacity: 0; transform: translateX(-28px); } }
-@media (prefers-reduced-motion: reduce) { .anim > *, .fp::before, .fab::before, .clock i { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .anim > *, .fgw i::before, .fab::before, .clock i { animation: none !important; } }
 @media (max-width: 360px) { .clock { font-size: 54px; } .wx .temp { font-size: 38px; } .nb { font-size: 9px; } }
 </style>
 </head>
@@ -707,7 +722,7 @@ function ringHtml(pct, big, small) {
     <div class="lb"><b>${big}</b><small>${small}</small></div></div>`;
 }
 function page(fc, ring, lab, live, title, meta, extra = "") {
-  return `<div class="fp" style="--fc:${fc}"><div class="fx">${ring}
+  return `<div class="fp" style="--fc:${fc}" data-fc="${fc}"><div class="fx">${ring}
     <div><div class="flab ${live ? "live" : ""}">${lab}</div><div class="ftitle ${title.length > 48 ? "long" : ""}">${esc(title)}</div><div class="fmeta">${esc(meta)}</div></div></div>${extra}</div>`;
 }
 function pairPage(L, nowM) {
@@ -737,7 +752,8 @@ function dlPage(T, nowM) {
   return page(fc, ringHtml(1 - Math.min(m, 4320) / 4320, big, small), "Ближайший дедлайн", false, nd.text, `#${nd.id} · ${relTxt(nd.date)}${nd.time ? " в " + nd.time : ""}`);
 }
 function focus(L, T, nowM) {
-  return `<section class="glass focus"><div class="fpages" id="fpages">${pairPage(L, nowM)}${dlPage(T, nowM)}</div>
+  const p0 = pairPage(L, nowM), p1 = dlPage(T, nowM), fc = h => (/data-fc="([^"]+)"/.exec(h) || [])[1];
+  return `<section class="glass focus"><div class="fgw"><i style="--g:${fc(p0)}"></i><i style="--g:${fc(p1)}"></i></div><div class="fpages" id="fpages">${p0}${p1}</div>
     <div class="fsw"><button data-fp="0">Пары</button><button data-fp="1">Дедлайны</button></div></section>`;
 }
 // какая страница открыта: что выбрал сам (помним до конца дня); иначе — пары, пока они сегодня ещё есть, потом дедлайны
@@ -747,10 +763,17 @@ function focusPage() {
   const L = lessons(today()) || [];
   return L.some(l => mins(l.e) > nowMin()) ? 0 : 1;
 }
+function pagesFx(el, t) {
+  if (t === undefined) t = el.clientWidth ? el.scrollLeft / el.clientWidth : 0;
+  [...el.children].forEach((pg, k) => { const d = Math.min(1, Math.abs(k - t)); pg.style.opacity = (1 - .65 * d).toFixed(3); pg.style.transform = d ? `scale(${(1 - .05 * d).toFixed(4)})` : ""; });
+  const g = el.parentElement.querySelector(".fgw");
+  if (g) [...g.children].forEach((x, k) => x.style.opacity = Math.max(0, 1 - Math.abs(k - t)).toFixed(3));
+}
 function syncFocus(i, smooth) {
   const el = $("fpages"); if (!el) return;
   syncFocus.prog = Date.now();
   el.scrollTo({ left: i * el.clientWidth, behavior: smooth ? "smooth" : "auto" });
+  if (!smooth) pagesFx(el, i);
   document.querySelectorAll(".fsw button").forEach((b, k) => b.classList.toggle("on", k === i));
   $("main").classList.toggle("fdl", i === 1);
 }
@@ -758,6 +781,7 @@ function syncChats(i, smooth) {
   const el = $("dpages"); if (!el) return;
   chatIdx = Math.min(i, el.childElementCount - 1);
   el.scrollTo({ left: chatIdx * el.clientWidth, behavior: smooth ? "smooth" : "auto" });
+  if (!smooth) pagesFx(el, chatIdx);
   document.querySelectorAll(".ddots button").forEach((b, k) => b.classList.toggle("on", k === chatIdx));
   fitChats(el, chatIdx);
 }
@@ -765,12 +789,14 @@ function syncChats(i, smooth) {
 function fitChats(el, i) { const c = el.children[i]; if (c) el.style.height = c.offsetHeight + "px"; }
 document.addEventListener("scroll", e => {
   if (e.target.id !== "dpages") return;
+  pagesFx(e.target);
   const i = Math.round(e.target.scrollLeft / e.target.clientWidth);
   if (i !== chatIdx) { chatIdx = i; haptic("sel"); fitChats(e.target, i); }
   document.querySelectorAll(".ddots button").forEach((b, k) => b.classList.toggle("on", k === i));
 }, true);
 document.addEventListener("scroll", e => {
   if (e.target.id !== "fpages") return;
+  pagesFx(e.target);
   const el = e.target, i = Math.round(el.scrollLeft / el.clientWidth);
   document.querySelectorAll(".fsw button").forEach((b, k) => b.classList.toggle("on", k === i));
   clearTimeout(syncFocus.f);
@@ -861,7 +887,8 @@ function vToday() {
 }
 
 function dayStrip(start, count, sel, tasksL, seven) {
-  return `<div class="days${seven ? " seven" : ""}">${Array.from({ length: count }, (_, i) => {
+  const si = Math.max(0, Array.from({ length: count }, (_, i) => iso(add(start, i))).indexOf(sel));
+  return `<div class="days${seven ? " seven" : ""}"${seven ? ` id="cstrip" style="--i:${si}"` : ""}>${seven ? '<i class="dsel"></i>' : ""}${Array.from({ length: count }, (_, i) => {
     const ds = iso(add(start, i)), d = P(ds), L = lessons(ds) || [];
     const bars = [];
     L.filter(l => !l.vuc).slice(0, 4).forEach((_, j) => bars.push(`<i class="${j % 2 ? "" : "l"}"></i>`));
@@ -888,19 +915,146 @@ function vTasks() {
 }
 
 // календарь: неделя (пн–вс) с перелистыванием, выбранный день — пары с ДЗ и преподавателями, дедлайны, ДР
-function vCal() {
-  const T = tasks().filter(t => !t.done), base = add(P(today()), calWeek * 7), mon = add(base, -((base.getDay() + 6) % 7));
-  const s = selDay && P(selDay) >= mon && P(selDay) < add(mon, 7) ? selDay : calWeek === 0 ? today() : iso(mon), d = P(s);
-  const lbl = calWeek === 0 ? "эта неделя" : calWeek === 1 ? "следующая неделя" : calWeek === -1 ? "прошлая неделя" : calWeek > 0 ? `через ${calWeek} нед.` : `${-calWeek} нед. назад`;
-  let h = `<div class="glass wk"><button class="ar" data-week="-1">${IC.prev}</button><button class="wkl" data-week="0">${nice(iso(mon))} — ${nice(iso(add(mon, 6)))}<small>${lbl}${calWeek ? " · к сегодня" : ""}</small></button><button class="ar" data-week="1">${IC.next}</button></div>`;
-  h += dayStrip(mon, 7, s, T, true);
-  const due = T.filter(t => t.date === s), L = lessons(s), bd = D.birthdays.filter(b => b.d === d.getDate() && b.m === d.getMonth() + 1);
+const calMon = () => { const base = add(P(today()), calWeek * 7); return add(base, -((base.getDay() + 6) % 7)); };
+const calSel = () => { const mon = calMon(); return selDay && P(selDay) >= mon && P(selDay) < add(mon, 7) ? selDay : calWeek === 0 ? today() : iso(mon); };
+function calBody(s) {
+  const T = tasks().filter(t => !t.done), d = P(s), due = T.filter(t => t.date === s), L = lessons(s), bd = D.birthdays.filter(b => b.d === d.getDate() && b.m === d.getMonth() + 1);
+  let h = "";
   if (bd.length) h += `<section class="glass card"><div class="bd"><b>🎂</b><div>День рождения<br>${bd.map(b => esc(b.name)).join(", ")}</div></div></section>`;
   h += card(`${WDL[d.getDay()]}, ${nice(s)}`, relTxt(s), timeline(s, due));
   const rest = due.filter(t => !(t.time && (L || []).some(l => l.s === t.time)));
   if (rest.length) h += card("Дедлайны", rest.length, taskList(rest), "var(--grad-hot)");
   if (D.schedule.changes?.length) h += card("Изменения в расписании", "", D.schedule.changes.map(c => `<div class="tk" style="grid-template-columns:1fr"><div class="tt">${esc(c)}</div></div>`).join(""), "var(--warn)");
   return h;
+}
+function vCal() {
+  const mon = calMon(), s = calSel();
+  const lbl = calWeek === 0 ? "эта неделя" : calWeek === 1 ? "следующая неделя" : calWeek === -1 ? "прошлая неделя" : calWeek > 0 ? `через ${calWeek} нед.` : `${-calWeek} нед. назад`;
+  return `<div class="glass wk"><button class="ar" data-week="-1">${IC.prev}</button><button class="wkl" id="cwkl" data-week="0">${nice(iso(mon))} — ${nice(iso(add(mon, 6)))}<small>${lbl}${calWeek ? " · к сегодня" : ""}</small></button><button class="ar" data-week="1">${IC.next}</button></div>`
+    + dayStrip(mon, 7, s, tasks().filter(t => !t.done), true)
+    + `<div class="calbody" id="calbody">${calBody(s)}</div>`;
+}
+// ---------- анимации календаря ----------
+// Прозрачность анимируем только у самих «стеклянных» карточек и плиток: у обёртки она отключает размытие стекла внутри.
+const MOTION = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SPRING = "cubic-bezier(.2,.9,.25,1.08)", POP = "cubic-bezier(.34,1.56,.64,1)", EASE = "cubic-bezier(.2,.8,.2,1)";
+const PSEUDO = typeof KeyframeEffect !== "undefined" && "pseudoElement" in KeyframeEffect.prototype;
+// после конца анимация «отпускает» элемент — снова действуют обычные стили (тусклые прошедшие пары, свайпы)
+function anim(el, kf, o) { return MOTION && el ? el.animate(kf, { fill: "backwards", ...o }) : null; }
+const tf = el => { const t = getComputedStyle(el).transform; return t === "none" ? "" : t; };
+// день «прорисовывается»: карточки въезжают, линия таймлайна бежит сверху вниз, точки пар вспыхивают, когда она до них доходит
+function calStagger(root, base = 60, dx = 0) {
+  if (!root) return;
+  [...root.children].forEach((c, k) => anim(c, [{ opacity: 0, transform: `translate(${dx}px, ${dx ? 0 : 14}px) scale(.98)` }, { opacity: 1, transform: "none" }], { duration: 560, delay: base + k * 70, easing: SPRING }));
+  root.querySelectorAll(".ch, .bd, .card > .tk").forEach((r, k) => anim(r, [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: base + 40 + k * 40, easing: EASE }));
+  const STEP = 95;
+  root.querySelectorAll(".tl").forEach(tl => tl.querySelectorAll(".ls").forEach((r, k) => {
+    const t0 = base + 90 + k * STEP;
+    if (PSEUDO) {
+      anim(r.querySelector(".rail"), [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }], { duration: STEP, delay: t0, easing: "linear", pseudoElement: "::before" });
+      if (r.classList.contains("cur")) anim(r, [{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: t0 + 80, pseudoElement: "::before" });
+    }
+    anim(r.querySelector(".rail i"), [{ transform: "scale(0)" }, { transform: "scale(1.45)", offset: .55 }, { transform: "scale(1)" }], { duration: 520, delay: t0, easing: EASE });
+    anim(r.querySelector(".t"), [{ opacity: 0, transform: "translateX(-10px)" }, { opacity: 1, transform: "none" }], { duration: 460, delay: t0, easing: SPRING });
+    anim(r.querySelector(".b"), [{ opacity: 0, transform: "translateX(18px)" }, { opacity: 1, transform: "none" }], { duration: 520, delay: t0 + 30, easing: SPRING });
+    r.querySelectorAll(".hw").forEach((h, j) => anim(h, [{ opacity: 0, transform: "translateY(8px) scale(.94)" }, { opacity: 1, transform: "none" }], { duration: 480, delay: t0 + 140 + j * 60, easing: POP }));
+  }));
+  root.querySelectorAll(".task").forEach((r, k) => anim(r, [{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 440, delay: base + 220 + k * 55, easing: EASE }));
+  root.querySelectorAll(".empty b").forEach(e => anim(e, [{ opacity: 0, transform: "scale(.4) rotate(-12deg)" }, { opacity: 1, transform: "none" }], { duration: 620, delay: base + 120, easing: POP }));
+}
+// плитки дней: волна от выбранного дня (при открытии) или «перелистывание» с поворотом в сторону смены недели; столбики загрузки вырастают
+function calTiles(dir = 0) {
+  const st = $("cstrip"); if (!st) return;
+  const si = +st.style.getPropertyValue("--i") || 0;
+  st.querySelectorAll(".day").forEach((b, k) => {
+    const lift = b.classList.contains("on") ? -3 : 0, d = (dir > 0 ? k : dir < 0 ? 6 - k : Math.abs(k - si)) * (dir ? 38 : 45);
+    anim(b, dir ? [{ opacity: 0, transform: `perspective(500px) translate(${dir * 26}px, 0) rotateY(${-dir * 70}deg)` }, { opacity: 1, transform: `perspective(500px) translate(0, ${lift}px) rotateY(0deg)` }]
+      : [{ opacity: 0, transform: "translateY(16px) scale(.8)" }, { opacity: 1, transform: `translateY(${lift}px) scale(1)` }], { duration: dir ? 580 : 520, delay: d, easing: SPRING });
+    b.querySelectorAll(".ld i").forEach((x, j) => anim(x, [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }], { duration: 440, delay: 180 + d + j * 30, easing: POP }));
+  });
+  const sel = st.querySelector(".dsel"), so = dir > 0 ? si : dir < 0 ? 6 - si : 0;
+  if (sel) anim(sel, [{ opacity: 0, transform: `${tf(sel)} scale(.6)` }, { opacity: 1, transform: `${tf(sel)} scale(1)` }], { duration: 560, delay: dir ? so * 38 + 110 : 50, easing: POP });
+}
+function calIntro() {
+  const m = $("main").classList; calBusy(1300);
+  calTiles(0); calStagger($("calbody"), 120, m.contains("slide-r") ? 28 : m.contains("slide-l") ? -28 : 0);
+}
+// «жидкое» выделение дня: тянется к новому дню, стягивается на нём и чуть пружинит; from — растянутое пальцем состояние
+function dselGo(st, to, from) {
+  const el = st?.querySelector(".dsel"); if (!el) return;
+  const a = +st.style.getPropertyValue("--i") || 0;
+  st.style.setProperty("--i", to);
+  el.style.transform = el.style.width = "";
+  if (!MOTION) return;
+  el.getAnimations().forEach(x => x.cancel());
+  const W = el.offsetWidth, step = W + 6, f = from || { x: a * step, w: W }, tx = to * step;
+  const T = (x, w, sy = 1) => ({ transform: `translateX(${x}px) translateY(-3px) scaleY(${sy})`, width: `${w}px` });
+  const lo = Math.min(f.x, tx), hi = Math.max(f.x + f.w, tx + W), span = hi - lo - W;
+  if (span < 2) return void el.animate([T(f.x, f.w), T(tx, W)], { duration: 380, easing: POP });
+  const sq = Math.min(7, 2 + span / 40), L = lo < tx - 1 ? tx + sq : tx, R = hi > tx + W + 1 ? tx + W - sq : tx + W;
+  const grow = lo < f.x - 1 || hi > f.x + f.w + 1;
+  el.animate(grow ? [{ ...T(f.x, f.w, f.sy || 1), easing: "cubic-bezier(.5,0,.3,1)" }, { ...T(lo, hi - lo, .86), offset: .4, easing: "cubic-bezier(.3,0,.2,1)" }, { ...T(L, R - L, 1.04), offset: .78, easing: "cubic-bezier(.3,0,.4,1)" }, T(tx, W)]
+    : [{ ...T(f.x, f.w, f.sy || 1), easing: "cubic-bezier(.3,0,.2,1)" }, { ...T(L, R - L, 1.04), offset: .62, easing: "cubic-bezier(.3,0,.4,1)" }, T(tx, W)],
+    { duration: grow ? Math.min(760, 520 + span * .5) : 460 });
+}
+// пока день тянут пальцем, выделение тянется к соседнему дню (у края недели — чуть-чуть, как резинка)
+function dselPull(g) {
+  const st = $("cstrip"), el = st?.querySelector(".dsel"); if (!el || !MOTION) return;
+  if (!g.W) { el.getAnimations().forEach(x => x.cancel()); g.W = el.offsetWidth; }
+  const i = +st.style.getPropertyValue("--i") || 0, step = g.W + 6, n = g.dx < 0 ? 1 : -1;
+  const s = Math.min((n > 0 ? i < 6 : i > 0) ? step * .75 : 14, Math.abs(g.dx) * .5);
+  g.sx = i * step - (n < 0 ? s : 0); g.sw = g.W + s; g.sy = 1 - s / step * .12;
+  el.style.transform = `translateX(${g.sx}px) translateY(-3px) scaleY(${g.sy.toFixed(3)})`; el.style.width = g.sw + "px";
+}
+// смена дня: выделение переливается, день на ленте подпрыгивает, содержимое уезжает в сторону и въезжает новое
+function calSelect(ds, dir, drag) {
+  const old = calSel();
+  if (ds === old) return;
+  dir = dir || (ds > old ? 1 : -1);
+  const mon = calMon();
+  if (P(ds) < mon || P(ds) >= add(mon, 7)) { selDay = ds; calWeekGo(P(ds) < mon ? -1 : 1, true, drag); return; }
+  selDay = ds; haptic("sel"); calBusy(1300);
+  const st = $("cstrip"), body = $("calbody");
+  dselGo(st, (P(ds).getDay() + 6) % 7, drag?.sx != null ? { x: drag.sx, w: drag.sw, sy: drag.sy } : null);
+  st.querySelectorAll(".day").forEach(b => {
+    const on = b.dataset.day === ds; b.classList.toggle("on", on);
+    if (!on) return;
+    anim(b.querySelector(".d"), [{ transform: "scale(1)" }, { transform: "scale(1.3)", offset: .35 }, { transform: "scale(1)" }], { duration: 520, easing: EASE });
+    b.querySelectorAll(".ld i").forEach((x, j) => anim(x, [{ transform: "scaleY(1)" }, { transform: "scaleY(1.8)", offset: .4 }, { transform: "scaleY(1)" }], { duration: 480, delay: 80 + j * 35, easing: EASE }));
+  });
+  const bx = drag?.bx || 0;
+  const outs = [anim(body, [{ transform: `translateX(${bx}px)` }, { transform: `translateX(${bx - dir * 40}px)` }], { duration: 150, easing: "ease-in", fill: "forwards" }),
+    ...[...body.children].map(c => anim(c, [{ opacity: c.style.opacity || 1 }, { opacity: 0 }], { duration: 150, easing: "ease-in", fill: "forwards" }))];
+  const swap = () => {
+    if (selDay !== ds) return;   // пока уезжало, выбрали другой день — покажет он
+    body.getAnimations({ subtree: true }).forEach(a => a.cancel());
+    body.style.transform = body.style.transition = "";
+    body.innerHTML = calBody(ds);
+    calStagger(body, 0, dir * 56);
+  };
+  outs[0] ? outs[0].finished.catch(() => {}).then(swap) : swap();
+}
+// смена недели: старые плитки уходят волной, новые «перелистываются» с поворотом, подпись и день едут следом
+function calWeekGo(step, keepSel, drag) {
+  const dir = step === 0 ? (calWeek > 0 ? -1 : 1) : step;
+  if (step === 0 && calWeek === 0) return;
+  calWeek = step === 0 ? 0 : calWeek + step;
+  if (!keepSel) selDay = null;
+  haptic("sel"); calBusy(1700);
+  const st = $("cstrip"), body = $("calbody"), bx = drag?.bx || 0;
+  const tiles = st ? [...st.querySelectorAll(".day, .dsel")] : [];
+  const outs = [
+    ...tiles.map((t, k) => anim(t, [{ opacity: 1, transform: `${tf(t)} translateX(0) scale(1)` }, { opacity: 0, transform: `${tf(t)} translateX(${-dir * 30}px) scale(.9)` }], { duration: 170, delay: (dir > 0 ? k : tiles.length - 1 - k) * 12, easing: "ease-in", fill: "forwards" })),
+    anim($("cwkl"), [{ opacity: 1, transform: "none" }, { opacity: 0, transform: `translateX(${-dir * 24}px)` }], { duration: 160, easing: "ease-in", fill: "forwards" }),
+    anim(body, [{ transform: `translateX(${bx}px)` }, { transform: `translateX(${bx - dir * 40}px)` }], { duration: 160, easing: "ease-in", fill: "forwards" }),
+    ...(body ? [...body.children] : []).map(c => anim(c, [{ opacity: c.style.opacity || 1 }, { opacity: 0 }], { duration: 160, easing: "ease-in", fill: "forwards" }))
+  ].filter(Boolean);
+  const go = () => {
+    render(false);
+    anim($("cwkl"), [{ opacity: 0, transform: `translateX(${dir * 30}px)` }, { opacity: 1, transform: "none" }], { duration: 480, easing: SPRING });
+    calTiles(dir); calStagger($("calbody"), 140, dir * 56);
+  };
+  outs.length ? Promise.all(outs.map(a => a.finished.catch(() => {}))).then(go) : go();
 }
 
 // ---------- карточки: интервальные повторения (как в Anki) ----------
@@ -1451,7 +1605,15 @@ const sky = (() => {
 
 async function refreshWeather() {
   W = (await liveWeather()) || W || D?.weather || null;
-  applySky(); if (D && !G) render(false); else if (!D) renderHud(false);
+  applySky(); if (!D) renderHud(false); else quietRender(() => !G);
+}
+// фоновая перерисовка (погода, минутный тик) не обрывает анимацию календаря — дожидается её конца
+let calAnimTill = 0;
+const calBusy = ms => { calAnimTill = Math.max(calAnimTill, Date.now() + ms); };
+function quietRender(ok) {
+  clearTimeout(quietRender.t);
+  if (tab === "cal" && Date.now() < calAnimTill) { quietRender.t = setTimeout(() => quietRender(ok), calAnimTill - Date.now() + 60); return; }
+  if (ok()) render(false);
 }
 
 // ---------- шторки ----------
@@ -1508,6 +1670,7 @@ function render(animate = true) {
   main.innerHTML = V() + `<div class="foot"><span>обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
   prevTab = tab;
   if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); }
+  if (tab === "cal" && animate) calIntro();
   $("fab").style.display = tab === "tasks" || tab === "today" || tab === "cal" ? "grid" : "none";
   if (tg?.BackButton) ((tab === "cards" && (study || deck !== null || cfold)) || (tab === "files" && ffold)) ? tg.BackButton.show() : tg.BackButton.hide();
   renderQueue();
@@ -1564,10 +1727,10 @@ function markDone(id, from) {
 let G = null, noClick = 0;
 document.addEventListener("pointerdown", e => {
   if (e.button > 0) return;
-  const tk = e.target.closest(".tk[data-sw]"), fl = e.target.closest("#flip"), gr = e.target.closest(".sheet .grab");
-  const el = tk || fl || gr;
+  const tk = e.target.closest(".tk[data-sw]"), fl = e.target.closest("#flip"), gr = e.target.closest(".sheet .grab"), cb = !tk && !fl && !gr && e.target.closest("#calbody");
+  const el = tk || fl || gr || cb;
   if (!el || (tk && e.target.closest("button"))) return;
-  G = { el, k: tk ? "task" : fl ? "card" : "sheet", x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, arm: false };
+  G = { el, k: tk ? "task" : fl ? "card" : gr ? "sheet" : "cal", x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, arm: false };
 });
 document.addEventListener("pointermove", e => {
   if (!G || e.pointerId !== G.id) return;
@@ -1581,7 +1744,7 @@ document.addEventListener("pointermove", e => {
     try { G.el.setPointerCapture(G.id); } catch (_) {}
   }
   if (G.lock === "no") return;
-  const arm = G.k === "sheet" ? G.dy > 110 : Math.abs(G.dx) > 96;
+  const arm = G.k === "sheet" ? G.dy > 110 : G.k === "cal" ? Math.abs(G.dx) > 70 : Math.abs(G.dx) > 96;
   if (arm !== G.arm) { G.arm = arm; if (arm) haptic("light"); }
   if (G.k === "task") {
     const row = G.el.parentElement, dx = G.dx;
@@ -1589,6 +1752,11 @@ document.addEventListener("pointermove", e => {
     row.querySelector(".rev.l").style.width = Math.max(0, dx - 10) + "px";
     row.querySelector(".rev.r").style.width = Math.max(0, -dx - 10) + "px";
     row.classList.toggle("arm", arm);
+  } else if (G.k === "cal") {
+    G.el.style.transform = `translateX(${(G.dx * .55).toFixed(1)}px)`;
+    const fade = (1 - Math.min(.55, Math.abs(G.dx) / 320)).toFixed(3);
+    for (const c of G.el.children) c.style.opacity = fade;
+    dselPull(G);
   } else if (G.k === "card") {
     G.el.style.transform = `translateX(${G.dx}px) rotate(${G.dx / 16}deg)`;
     G.el.querySelector(".stamp.k").style.opacity = clamp(G.dx / 100);
@@ -1614,6 +1782,15 @@ function endGesture(e) {
       const t = tasks().find(x => x.id === id);
       if (t?.date) addOp({ op: "tmr", id }, "⏰ #" + id + " — на завтра"); else moveSheet(id);
     } else reset();
+  } else if (g.k === "cal") {
+    if (Math.abs(g.dx) > 70) calSelect(iso(add(P(calSel()), g.dx < 0 ? 1 : -1)), g.dx < 0 ? 1 : -1, { bx: g.dx * .55, sx: g.sx, sw: g.sw, sy: g.sy });
+    else {
+      const cs = [...g.el.children];
+      g.el.style.transition = "transform .45s var(--spring)"; g.el.style.transform = "";
+      cs.forEach(c => { c.style.transition = "opacity .3s"; c.style.opacity = ""; });
+      setTimeout(() => { g.el.style.transition = ""; cs.forEach(c => c.style.transition = ""); }, 460);
+      if (g.sx != null) dselGo($("cstrip"), +$("cstrip").style.getPropertyValue("--i") || 0, { x: g.sx, w: g.sw, sy: g.sy });
+    }
   } else if (g.k === "card") {
     g.el.style.transition = "";
     if (Math.abs(g.dx) > 100) {
@@ -1654,8 +1831,8 @@ document.addEventListener("click", e => {
   if (s.move) { moveSheet(+s.move); return; }
   if (s.imp) { const t = tasks().find(x => x.id === +s.imp); addOp({ op: "imp", id: +s.imp, value: !t.imp }, t.imp ? "Пометка снята" : "❗️ Отмечено важным"); return; }
   if (s.filter) { filter = s.filter; haptic("sel"); render(false); return; }
-  if (s.day) { selDay = s.day; haptic("sel"); render(false); return; }
-  if (s.week) { calWeek = s.week === "0" ? 0 : calWeek + +s.week; selDay = null; haptic("sel"); render(false); return; }
+  if (s.day) { if (tab === "cal") calSelect(s.day); else { selDay = s.day; haptic("sel"); render(false); } return; }
+  if (s.week) { calWeekGo(+s.week); return; }
   if (s.deck) { deck = +s.deck; study = null; haptic("light"); render(); scrollTo({ top: 0 }); return; }
   if (el.id === "flip") { if (study) { study.flipped = !study.flipped; el.classList.toggle("on", study.flipped); } haptic("light"); return; }
   if (s.fdl) { const f = fileBy(s.fdl); if (f) dlFile(f); return; }
@@ -1698,8 +1875,7 @@ addEventListener("scroll", () => {
 // раз в минуту: часы, небо, «идёт сейчас»
 function tick() {
   applySky();
-  if (D && !G && !$("sheet").classList.contains("on")) render(false);
-  else if (!D) renderHud(false);
+  if (!D) renderHud(false); else quietRender(() => !G && !$("sheet").classList.contains("on"));
 }
 setTimeout(() => { tick(); setInterval(tick, 60000); }, (60 - new Date().getSeconds()) * 1000 + 50);
 
