@@ -38,10 +38,30 @@ body {
 /* живой фон: мягкое «северное сияние» */
 .aurora { position: fixed; inset: -20% -20% auto -20%; height: 70vh; z-index: -1; pointer-events: none; filter: blur(60px); opacity: .55; }
 .aurora i { position: absolute; border-radius: 50%; animation: float 18s ease-in-out infinite alternate; }
-.aurora i:nth-child(1) { width: 55vw; height: 55vw; left: 5%; top: 5%; background: #6d5cff; }
-.aurora i:nth-child(2) { width: 45vw; height: 45vw; right: 0; top: 0; background: #1fb6ff; animation-delay: -6s; }
-.aurora i:nth-child(3) { width: 35vw; height: 35vw; left: 40%; top: 30%; background: #ff4f9a; opacity: .7; animation-delay: -12s; }
+.aurora { --a1: #6d5cff; --a2: #1fb6ff; --a3: #ff4f9a; transition: filter 2s, opacity 2s; }
+.aurora i { transition: background 3s; }
+.aurora i:nth-child(1) { width: 55vw; height: 55vw; left: 5%; top: 5%; background: var(--a1); }
+.aurora i:nth-child(2) { width: 45vw; height: 45vw; right: 0; top: 0; background: var(--a2); animation-delay: -6s; }
+.aurora i:nth-child(3) { width: 35vw; height: 35vw; left: 40%; top: 30%; background: var(--a3); opacity: .7; animation-delay: -12s; }
 .light .aurora { opacity: .28; }
+/* время суток и погода: меняют цвета сияния */
+.ph-night .aurora { --a1: #2a2f8f; --a2: #0c4a7a; --a3: #5b2a86; opacity: .45; }
+.ph-dawn .aurora { --a1: #ff8a5b; --a2: #7c6cff; --a3: #ff5fa2; }
+.ph-dusk .aurora { --a1: #ff6b3d; --a2: #8e2de2; --a3: #ff4f9a; }
+.wx-cloudy .aurora, .wx-fog .aurora { filter: blur(60px) saturate(.45); }
+.wx-rain .aurora, .wx-drizzle .aurora, .wx-storm .aurora { --a1: #3b4a8f; --a2: #2a6f9a; --a3: #4a5a7a; filter: blur(60px) saturate(.6); }
+.wx-snow .aurora { --a1: #8fa8ff; --a2: #bfe3ff; --a3: #c9b8ff; }
+.light.wx-snow .aurora { opacity: .4; }
+#sky { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.flash { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: #dfe6ff; opacity: 0; }
+.flash.on { animation: flash .9s ease-out; }
+@keyframes flash { 0% { opacity: 0 } 8% { opacity: .35 } 16% { opacity: .05 } 26% { opacity: .28 } 100% { opacity: 0 } }
+.ph-night .hero { background: radial-gradient(120% 140% at 0% 0%, #4a43c9 0%, #26217a 45%, #0d0b33 100%); }
+.ph-dawn .hero { background: radial-gradient(120% 140% at 0% 0%, #ff9a76 0%, #c4588f 40%, #3b2a7a 100%); }
+.ph-dusk .hero { background: radial-gradient(120% 140% at 0% 0%, #ff8a5b 0%, #a43f9e 42%, #2a1a5c 100%); }
+.wx-rain .hero, .wx-drizzle .hero, .wx-storm .hero { background: radial-gradient(120% 140% at 0% 0%, #5c6bb0 0%, #34417e 45%, #151a3d 100%); }
+.hero .wxc { position: absolute; right: 16px; top: 16px; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2); font-size: 13px; font-weight: 800; }
+.hero .wxc small { font-weight: 600; opacity: .8; }
 @keyframes float { to { transform: translate3d(6vw, 4vh, 0) scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .aurora i, .anim > * { animation: none !important; } }
 
@@ -215,6 +235,7 @@ textarea { min-height: 84px; resize: vertical; }
 </head>
 <body>
 <div class="aurora"><i></i><i></i><i></i></div>
+<canvas id="sky"></canvas><div class="flash" id="flash"></div>
 <header><div class="eyebrow" id="eyebrow">&nbsp;</div><h1 id="title">Планер</h1></header>
 <main id="main"><div class="msg"><b>✨</b>Загружаю…</div></main>
 
@@ -365,7 +386,7 @@ function vToday() {
   else if (next) { const m = mins(next.s) - nowM; now = next.n; meta = `${m < 60 ? "через " + m + " мин" : "в " + next.s} · ${next.m}`; prog = 0; }
   else { const nd = T.find(t => t.date && t.date >= t0); now = L.length ? "Пары закончились 🎉" : "Сегодня без пар"; meta = nd ? `ближайший дедлайн: #${nd.id} ${relTxt(nd.date)}` : "дедлайнов нет — красота"; }
   const in3 = T.filter(t => t.date && diff(t.date) >= 0 && diff(t.date) <= 3).length;
-  let h = `<div class="hero"><div class="hi">${hi}, ${esc(name)}</div><div class="now">${esc(now)}</div><div class="meta">${esc(meta)}</div>
+  let h = `<div class="hero">${wxChip()}<div class="hi">${hi}, ${esc(name)}</div><div class="now">${esc(now)}</div><div class="meta">${esc(meta)}</div>
     ${cur ? `<div class="bar"><i style="width:${prog.toFixed(0)}%"></i></div>` : ""}
     <div class="stats"><div class="stat"><b>${L.filter(l => !l.vuc).length}</b><span>пар сегодня</span></div>
     <div class="stat"><b>${in3}</b><span>дедлайнов ≤ 3 дн.</span></div><div class="stat"><b>${T.filter(t => t.imp).length}</b><span>❗️ важных</span></div></div></div>`;
@@ -482,6 +503,106 @@ function moveSheet(id) {
     <button class="btn pri go" data-save="move">Перенести</button>`);
 }
 
+// ---------- погода и время суток ----------
+// Погоду приложение берёт вживую из Open-Meteo; если не вышло — снимок, который бот положил в данные.
+// Для проверки: ?wx=rain|drizzle|storm|snow|fog|cloudy|partly|clear и ?ph=night|dawn|day|dusk
+const WX_URL = "https://api.open-meteo.com/v1/forecast?latitude=55.67&longitude=37.49&current=temperature_2m,apparent_temperature,weather_code,is_day,precipitation,wind_speed_10m&daily=sunrise,sunset&timezone=Europe%2FMoscow&forecast_days=1";
+const WXK = c => c <= 0 ? "clear" : c <= 2 ? "partly" : c === 3 ? "cloudy" : c <= 48 ? "fog" : c <= 57 ? "drizzle" : c <= 67 ? "rain" : c <= 77 ? "snow" : c <= 82 ? "rain" : c <= 86 ? "snow" : "storm";
+const WXN = { clear: ["☀️", "ясно"], partly: ["⛅", "переменная облачность"], cloudy: ["☁️", "пасмурно"], fog: ["🌫", "туман"], drizzle: ["🌦", "морось"], rain: ["🌧", "дождь"], snow: ["🌨", "снег"], storm: ["⛈", "гроза"] };
+const QS = new URLSearchParams(location.search);
+let W = null;
+async function liveWeather() {
+  try {
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 7000);
+    const w = await (await fetch(WX_URL, { signal: ctl.signal })).json(), c = w.current;
+    return { time: c.time, temp: c.temperature_2m, feels: c.apparent_temperature, code: c.weather_code, is_day: c.is_day, precip: c.precipitation, wind: c.wind_speed_10m, sunrise: w.daily.sunrise[0], sunset: w.daily.sunset[0], live: true };
+  } catch (e) { return null; }
+}
+function wxKind() { return QS.get("wx") || (W ? WXK(W.code) : null); }
+function phase() {
+  if (QS.get("ph")) return QS.get("ph");
+  const n = msk(), m = n.getHours() * 60 + n.getMinutes();
+  const sr = W?.sunrise ? mins(W.sunrise.slice(11, 16)) : 7 * 60, ss = W?.sunset ? mins(W.sunset.slice(11, 16)) : 18 * 60;
+  return m < sr - 45 || m > ss + 60 ? "night" : m < sr + 60 ? "dawn" : m > ss - 60 ? "dusk" : "day";
+}
+function wxChip() {
+  const k = wxKind();
+  if (!k) return "";
+  const [e, n] = WXN[k], t = W ? Math.round(W.temp) : null;
+  return `<div class="wxc">${phase() === "night" && (k === "clear" || k === "partly") ? "🌙" : e}${t !== null ? ` ${t > 0 ? "+" : ""}${t}°` : ""} <small>${n}</small></div>`;
+}
+function applySky() {
+  const R = document.documentElement, k = wxKind() || "none";
+  R.className = R.className.replace(/\b(ph|wx)-\S+/g, "").trim();
+  R.classList.add("ph-" + phase(), "wx-" + k);
+  sky.set(k, W ? W.precip : 0, W ? W.wind : 0, phase() === "night");
+}
+
+// частицы на холсте: капли, снег, облака, туман, звёзды
+const sky = (() => {
+  const cv = document.getElementById("sky"), cx = cv.getContext("2d"), still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let kind = "none", night = false, wind = 0, P = [], C = [], w = 0, h = 0, raf = 0, last = 0, nextFlash = 0;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function size() { const r = Math.min(devicePixelRatio || 1, 2); w = innerWidth; h = innerHeight; cv.width = w * r; cv.height = h * r; cx.setTransform(r, 0, 0, r, 0, 0); }
+  function seed(precip) {
+    const area = w * h / 1e5;
+    P = []; C = [];
+    const n = kind === "rain" ? Math.min(220, 60 + precip * 40) * area / 4 : kind === "storm" ? 260 * area / 4 : kind === "drizzle" ? 55 * area / 4 : kind === "snow" ? 90 * area / 4 : night && (kind === "clear" || kind === "partly") ? 70 * area / 4 : 0;
+    for (let i = 0; i < n; i++) P.push({ x: rnd(0, w), y: rnd(0, h), z: rnd(.4, 1), p: rnd(0, 6.28) });
+    const nc = kind === "cloudy" ? 6 : kind === "partly" ? 3 : kind === "fog" ? 5 : kind === "rain" || kind === "storm" ? 4 : 0;
+    for (let i = 0; i < nc; i++) C.push({ x: rnd(-.2, 1.1) * w, y: kind === "fog" ? rnd(.15, .95) * h : rnd(-.05, .35) * h, r: rnd(.35, .6) * Math.max(w, 400), v: rnd(4, 10) });
+  }
+  function frame(t) {
+    const dt = Math.min(50, t - (last || t)) / 16.7; last = t;
+    const light = document.documentElement.classList.contains("light");
+    cx.clearRect(0, 0, w, h);
+    for (const c of C) {
+      c.x += c.v * dt * .05 * (kind === "fog" ? 2 : 1); if (c.x - c.r > w) c.x = -c.r;
+      const g = cx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r), a = kind === "fog" ? .10 : kind === "rain" || kind === "storm" ? .10 : .07;
+      g.addColorStop(0, light ? `rgba(120,130,160,${a * 1.4})` : `rgba(200,210,235,${a})`); g.addColorStop(1, "rgba(0,0,0,0)");
+      cx.fillStyle = g; cx.fillRect(c.x - c.r, c.y - c.r, c.r * 2, c.r * 2);
+    }
+    if (kind === "rain" || kind === "storm" || kind === "drizzle") {
+      const dz = kind === "drizzle", slant = Math.max(-.35, Math.min(.35, wind / 60)) || .12;
+      cx.strokeStyle = light ? "rgba(50,70,130,.32)" : "rgba(175,195,255,.5)"; cx.lineCap = "round";
+      cx.beginPath();
+      for (const d of P) {
+        const v = (dz ? 5 : 15) * d.z * dt, L = (dz ? 6 : 18) * d.z;
+        d.y += v; d.x += v * slant;
+        if (d.y > h) { d.y = rnd(-40, 0); d.x = rnd(-50, w); }
+        cx.moveTo(d.x, d.y); cx.lineTo(d.x - L * slant, d.y - L);
+      }
+      cx.lineWidth = dz ? 1 : 1.3; cx.stroke();
+      if (kind === "storm" && t > nextFlash) { if (nextFlash) { const f = document.getElementById("flash"); f.classList.remove("on"); void f.offsetWidth; f.classList.add("on"); } nextFlash = t + rnd(6000, 15000); }
+    } else if (kind === "snow") {
+      cx.fillStyle = light ? "rgba(110,130,180,.55)" : "rgba(255,255,255,.8)";
+      cx.beginPath();
+      for (const d of P) {
+        d.p += .02 * dt; d.y += 1.1 * d.z * dt; d.x += (Math.sin(d.p) * .6 + wind / 40) * dt;
+        if (d.y > h + 5) { d.y = -5; d.x = rnd(0, w); }
+        cx.moveTo(d.x, d.y); cx.arc(d.x, d.y, 1 + d.z * 2, 0, 6.28);
+      }
+      cx.fill();
+    } else if (P.length) {
+      for (const d of P) {
+        d.p += .03 * dt;
+        cx.fillStyle = `rgba(255,255,255,${(.25 + .55 * (Math.sin(d.p) * .5 + .5)) * d.z * (light ? .5 : 1)})`;
+        cx.fillRect(d.x, d.y * .6, d.z * 1.6, d.z * 1.6);
+      }
+    }
+    raf = still || document.hidden || (!P.length && !C.length) ? 0 : requestAnimationFrame(frame);
+  }
+  function start() { cancelAnimationFrame(raf); last = 0; raf = requestAnimationFrame(frame); }
+  addEventListener("resize", () => { size(); seed(0); start(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) start(); });
+  return { set(k, precip, wd, nt) { if (k === kind && nt === night) return; kind = k; night = nt; wind = wd || 0; size(); seed(precip || 0); start(); } };
+})();
+
+async function refreshWeather() {
+  W = (await liveWeather()) || W || D?.weather || null;
+  applySky(); if (D && tab === "today") render(false);
+}
+
 // ---------- отрисовка ----------
 function render(animate = true) {
   const act = tasks().filter(t => !t.done), td = today(), d = P(td);
@@ -569,7 +690,8 @@ document.getElementById("send").onclick = sendOps;
 if (tg?.MainButton) tg.MainButton.onClick(sendOps);
 if (tg?.BackButton) tg.BackButton.onClick(() => { deck = null; render(); });
 
-load().then(d => { D = d; if (msk().getDay() === 0) schedWeek = 1; render(); }).catch(err => {
+applySky(); refreshWeather(); setInterval(refreshWeather, 15 * 60000); setInterval(applySky, 60000);
+load().then(d => { D = d; W = W || d.weather || null; applySky(); if (msk().getDay() === 0) schedWeek = 1; render(); }).catch(err => {
   document.getElementById("main").innerHTML = `<div class="msg"><b>🔒</b>${esc(err.message && !/decrypt|operation/i.test(err.message) ? err.message : "Не удалось расшифровать данные — открой планер кнопкой в чате с ботом")}</div>`;
 });
 </script>
