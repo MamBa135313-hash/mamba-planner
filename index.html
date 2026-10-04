@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610042214">
+<meta name="app-v" content="202610042220">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2000,10 +2000,11 @@ function render(animate = true) {
   const i = TABS.findIndex(x => x[0] === tab), j = TABS.findIndex(x => x[0] === prevTab);
   const main = $("main");
   main.className = animate ? "anim" + (prevTab && prevTab !== tab ? (i > j ? " slide-r" : " slide-l") : "") : "";
-  const sx = !animate && main.querySelector(".tkts")?.scrollLeft;
+  const keepX = animate ? [] : [".seg", ".tkts"].map(q => [q, main.querySelector(q)?.scrollLeft || 0]);
   main.innerHTML = V() + `<div class="foot"><span>${offline ? "нет сети · " : ""}обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
   prevTab = tab;
-  if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); if (sx) { const k = main.querySelector(".tkts"); if (k) k.scrollLeft = sx; } }
+  if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); }
+  for (const [q, x] of keepX) { const el = x && main.querySelector(q); if (el) el.scrollLeft = x; }
   if (tab === "cal" && animate) calIntro();
   $("fab").style.display = tab === "tasks" || tab === "today" || tab === "cal" ? "grid" : "none";
   syncBack();
@@ -2190,7 +2191,7 @@ document.addEventListener("click", e => {
   if (s.tmr) { addOp({ op: "tmr", id: +s.tmr }, "⏰ #" + s.tmr + " — на завтра"); return; }
   if (s.move) { moveSheet(+s.move); return; }
   if (s.imp) { const t = tasks().find(x => x.id === +s.imp); addOp({ op: "imp", id: +s.imp, value: !t.imp }, t.imp ? "Пометка снята" : "❗️ Отмечено важным"); return; }
-  if (s.filter) { filter = s.filter; haptic("sel"); render(false); return; }
+  if (s.filter) { filter = s.filter; haptic("sel"); render(false); segReveal(); return; }
   if (s.day) { if (tab === "cal") calSelect(s.day); else { selDay = s.day; haptic("sel"); render(false); } return; }
   if (s.week) { calWeekGo(+s.week); return; }
   if (s.deck) { deck = +s.deck; study = null; haptic("light"); render(); scrollTo({ top: 0 }); return; }
@@ -2227,6 +2228,13 @@ function syncBack() {
   if (!tg?.BackButton) return;
   const need = viewerOn() || sheetOn() || (tab === "cards" && (study || deck !== null || cfold)) || (tab === "files" && ffold);
   need ? tg.BackButton.show() : tg.BackButton.hide();
+}
+function segReveal() {
+  const seg = document.querySelector("#main .seg"), b = seg?.querySelector("button.on"); if (!b) return;
+  const sr = seg.getBoundingClientRect(), br = b.getBoundingClientRect(), l = br.left - sr.left, r = br.right - sr.left;
+  if (l < 14) seg.scrollBy({ left: l - 14, behavior: MOTION ? "smooth" : "auto" });
+  else if (r > sr.width - 14) seg.scrollBy({ left: r - sr.width + 14, behavior: MOTION ? "smooth" : "auto" });
+  anim(b, [{ transform: "scale(.9)" }, { transform: "scale(1)" }], { duration: 420, easing: POP });
 }
 function goTab(t, again) {
   if (t === tab && !again) return;
