@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610050215">
+<meta name="app-v" content="202610050157">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -469,6 +469,13 @@ nav.dock { transition: --i .6s var(--spring); }
 .nb:active svg { transform: scale(.82); }
 .nb .dot { position: absolute; top: 2px; left: calc(50% + 5px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--hot); color: #fff; font: 700 var(--fs-11)/18px var(--sans); font-style: normal; text-align: center; box-shadow: 0 0 0 2px var(--bg-2); font-variant-numeric: tabular-nums; }
 .nb .dot:empty { display: none; }
+/* пока ведёшь пальцем по меню — над пальцем плашка с вкладкой, на которой окажешься, если отпустить */
+.dtip { position: fixed; z-index: 22; left: 50%; top: 0; display: flex; align-items: center; gap: 7px; padding: 9px 14px 9px 12px; border-radius: 14px; pointer-events: none;
+  background: var(--paper); color: var(--paper-ink); font: 650 var(--fs-16)/1 var(--sans); white-space: nowrap; box-shadow: 0 14px 30px -10px rgba(0,0,0,.75);
+  transform: translate(-50%, -100%) scale(.85); transform-origin: 50% 100%; opacity: 0; transition: opacity .15s, transform .25s var(--spring); }
+.dtip.on { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+.dtip svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dtip::after { content: ""; position: absolute; left: calc(50% + var(--ax, 0px)); bottom: -5px; width: 11px; height: 11px; margin-left: -5.5px; background: inherit; border-radius: 2px; transform: rotate(45deg); }
 .nodata nav.dock, .nodata .fab, .nodata .queue { display: none !important; }
 body.hasq { padding-bottom: calc(176px + var(--safe-bottom)); }   /* плашка «N изменений» не закрывает конец списка */
 
@@ -636,6 +643,7 @@ input[type="date"], input[type="time"] { min-height: 50px; -webkit-appearance: n
 <div class="queue" id="queue"><span class="n" id="qn"></span><span id="qtext"></span><button class="u" id="undo">Отменить</button><button class="s" id="send">Отправить боту</button></div>
 <button class="fab" id="fab" aria-label="Новая задача"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav class="dock" id="nav"></nav>
+<div class="dtip" id="dtip" aria-hidden="true"></div>
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet"></div>
 <div class="viewer" id="viewer"><div class="vtop"><span class="vtitle" id="vtitle"></span><span class="vpage" id="vpage"></span></div><div class="vbody" id="vbody"></div><div class="vspin"></div><div class="vbar" id="vbar"></div></div>
@@ -2406,6 +2414,7 @@ document.addEventListener("pointermove", e => {
     const i = Math.max(0, Math.min(TABS.length - 1, G.i0 + G.dx / 45)), k = Math.round(i);
     G.el.classList.add("drag"); G.el.style.setProperty("--i", i.toFixed(3));
     if (k !== (G.kk ?? G.i0)) { G.kk = k; haptic("sel"); }
+    dockTip(e.clientX, k);
   } else if (G.k === "card") {
     G.el.style.transform = `translateX(${G.dx}px) rotate(${G.dx / 16}deg)`;
     G.el.querySelector(".stamp.k").style.opacity = clamp(G.dx / 100);
@@ -2414,9 +2423,20 @@ document.addEventListener("pointermove", e => {
     const sh = $("sheet"); sh.style.transition = "none"; sh.style.transform = `translateY(${Math.max(0, G.dy)}px)`;
   }
 });
+// плашка над пальцем: x — где палец, k — вкладка, к которой ближе подложка (на неё и перейдём, если отпустить); null — спрятать
+function dockTip(x, k) {
+  const t = $("dtip");
+  if (k === null) { t.classList.remove("on"); return; }
+  if (t.dataset.k !== String(k)) { t.dataset.k = k; t.innerHTML = IC[TABS[k][0]] + "<span>" + TABS[k][1] + "</span>"; }
+  const half = t.offsetWidth / 2 + 10, cx = Math.max(half, Math.min(innerWidth - half, x));
+  t.style.left = cx + "px"; t.style.top = ($("nav").getBoundingClientRect().top - 12) + "px";
+  t.style.setProperty("--ax", Math.max(-half + 22, Math.min(half - 22, x - cx)) + "px");   // уголок — над пальцем
+  t.classList.add("on");
+}
 function endGesture(e) {
   if (!G || e.pointerId !== G.id) return;
   const g = G; G = null;
+  if (g.k === "dock") dockTip(null, null);
   clearTimeout(g.hold);
   if (g.grabbed) { g.el.parentElement.classList.remove("grab"); if (!g.lock) noClick = Date.now(); }   // взял и отпустил на месте — ничего не делаем
   if (!g.lock || g.lock === "no") return;
