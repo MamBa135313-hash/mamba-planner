@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041850">
+<meta name="app-v" content="202610041856">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,9 +58,10 @@ button:disabled { cursor: default; }
   background: radial-gradient(circle, #fffef4 0%, #fff1b8 38%, #ffcf5c 62%, rgba(255,190,70,0) 71%);
   box-shadow: 0 0 70px 26px rgba(255,214,120,.42), 0 0 220px 90px rgba(255,190,90,.22); }
 .sun.low { background: radial-gradient(circle, #fff3d6 0%, #ffb36b 40%, #ff7a3d 62%, rgba(255,110,60,0) 71%); box-shadow: 0 0 90px 36px rgba(255,140,80,.5), 0 0 260px 120px rgba(255,100,70,.28); transform: scale(1.25); }
-.moon { position: absolute; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%; background: radial-gradient(circle at 38% 35%, #fffef6, #e9e6d6 60%, #cfcab4); transition: left 3s, top 3s, opacity 2.5s;
-  box-shadow: 0 0 40px 10px rgba(230,235,255,.25), 0 0 140px 50px rgba(160,180,255,.12); overflow: hidden; }
-.moon i { position: absolute; inset: -2px; border-radius: 50%; background: #0b1030; transition: transform 1s; }
+.moon { position: absolute; width: 66px; height: 66px; margin: -33px 0 0 -33px; overflow: visible; transition: left 3s, top 3s, opacity 2.5s; }
+/* свечение — только от освещённой части; ярче к полнолунию */
+.moon .lit { filter: drop-shadow(0 0 calc(3px + 5px * var(--mk, 1)) rgba(245,246,255,.65)) drop-shadow(0 0 calc(10px + 26px * var(--mk, 1)) rgba(170,190,255,.4)); }
+.moon .ash { fill: #8d9cc4; opacity: .07; }
 .skyline { position: absolute; left: 0; bottom: 0; width: 100%; height: 26vh; min-height: 150px; transition: opacity 2s; }
 .skyline .b { transition: fill 2.5s; }
 .skyline .w { fill: #ffd77a; transition: opacity 2.5s; }
@@ -443,7 +444,17 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 </style>
 </head>
 <body>
-<div id="scene"><div class="g" id="sceneG"></div><div class="sun" id="sun"></div><div class="moon" id="moon"><i id="moonShade"></i></div><div class="haze" id="haze"></div>
+<div id="scene"><div class="g" id="sceneG"></div><div class="sun" id="sun"></div><svg class="moon" id="moon" viewBox="-50 -50 100 100" aria-hidden="true"><defs>
+  <radialGradient id="mg" cx="-.25" cy="-.3" r="1.25" gradientUnits="objectBoundingBox" fx=".35" fy=".3"><stop offset="0" stop-color="#fffdf4"/><stop offset=".55" stop-color="#ece7d6"/><stop offset="1" stop-color="#c9c2aa"/></radialGradient>
+  <radialGradient id="mlimb" cx=".5" cy=".5" r=".5"><stop offset=".72" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#5a5446" stop-opacity=".35"/></radialGradient>
+  <filter id="mblur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter><filter id="mblur2"><feGaussianBlur stdDeviation=".8"/></filter>
+  <clipPath id="mclip"><path id="mlit" d="M0,-40 A40,40 0 1 1 0,40 A40,40 0 1 1 0,-40Z"/></clipPath></defs>
+  <circle class="ash" r="40"/>
+  <g class="lit"><g clip-path="url(#mclip)"><circle r="40" fill="url(#mg)"/>
+    <g fill="#6e6857" opacity=".34" filter="url(#mblur)"><ellipse cx="-12" cy="-12" rx="13" ry="10"/><ellipse cx="4" cy="-14" rx="7" ry="6"/><ellipse cx="11" cy="0" rx="9" ry="10"/><ellipse cx="25" cy="-4" rx="4.5" ry="5.5"/><ellipse cx="-22" cy="4" rx="9" ry="13"/><ellipse cx="2" cy="10" rx="6" ry="5"/><ellipse cx="-6" cy="5" rx="4" ry="5"/></g>
+    <g fill="#fffcf2" opacity=".45" filter="url(#mblur2)"><circle cx="-4" cy="30" r="2.6"/><circle cx="-26" cy="-14" r="1.6"/><circle cx="14" cy="22" r="1.8"/></g>
+    <g stroke="#fffcf2" stroke-opacity=".07" stroke-width="1"><path d="M-4,30 L-12,6 M-4,30 L10,8 M-4,30 L-26,22 M-4,30 L14,38"/></g>
+    <circle r="40" fill="url(#mlimb)"/></g></g></svg><div class="haze" id="haze"></div>
 <svg class="skyline" id="skyline" viewBox="0 0 400 120" preserveAspectRatio="xMidYMax slice"></svg></div>
 <canvas id="sky"></canvas><div class="flash" id="flash"></div><div class="vig"></div><div class="grain"></div>
 <div class="topbar" id="topbar"></div>
@@ -1035,9 +1046,11 @@ function applyScene() {
   const ma = Math.sin(Math.PI * clamp(ph ? .45 : np));
   moon.style.left = (10 + 80 * clamp(ph ? .3 : np)) + "%"; moon.style.top = ((.6 - .45 * ma) * H) + "px";
   moon.style.opacity = night ? ({ clear: 1, partly: .8, cloudy: .2, snow: .2 }[k] ?? .05) : 0;
-  const mp = moonPhase(Date.now());
-  // тень сдвигается: растущая луна — тень уходит влево, убывающая — наползает справа
-  document.getElementById("moonShade").style.transform = `translateX(${mp < .5 ? -128 * mp : 64 - 128 * (mp - .5)}px)`;
+  const mp = QS.get("mp") !== null ? +QS.get("mp") : moonPhase(Date.now());
+  // освещённая часть: внешний полукруг + терминатор-эллипс (rx = r·|cos 2πp|); растущая светит справа, убывающая слева
+  const mr = 40, rx = (mr * Math.abs(Math.cos(2 * Math.PI * mp))).toFixed(2), cres = mp < .25 || mp > .75, wax = mp < .5;
+  document.getElementById("mlit").setAttribute("d", `M0,${-mr} A${mr},${mr} 0 0 ${wax ? 1 : 0} 0,${mr} A${rx},${mr} 0 0 ${wax ? (cres ? 0 : 1) : (cres ? 1 : 0)} 0,${-mr}Z`);
+  moon.style.setProperty("--mk", ((1 - Math.cos(2 * Math.PI * mp)) / 2).toFixed(2)); // доля освещённого диска
   // город: днём силуэт, ночью — тёмный с огнями окон
   const cityCol = mixc(mixc(bot, "#0a0d1c", alt < 0 ? .82 : .55), "#000000", k === "storm" ? .3 : 0);
   document.querySelectorAll("#skyline .b").forEach(e => e.style.fill = cityCol);
