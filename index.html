@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041709">
+<meta name="app-v" content="202610041712">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -163,8 +163,9 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
   background: linear-gradient(160deg, color-mix(in srgb, var(--uc) 28%, transparent), color-mix(in srgb, var(--uc) 6%, transparent) 75%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px color-mix(in srgb, var(--uc) 32%, transparent), 0 14px 26px -16px var(--uc); transition: transform .4s var(--spring); }
 .tkt:active { transform: scale(.94); }
-/* ближайший дедлайн уже крупно наверху (страница «Дедлайны») — в ленте не повторяем */
-.fdl .tkt.lead { display: none; }
+/* ближайший дедлайн уже крупно наверху (страница «Дедлайны») — в ленте он плавно схлопывается, а при «Парах» так же плавно возвращается */
+.tkt.lead { transition: transform .4s var(--spring), flex-basis .5s var(--ease), padding .5s var(--ease), margin .5s var(--ease), opacity .3s ease, box-shadow .3s; }
+.fdl .tkt.lead { flex-basis: 0; padding-left: 0; padding-right: 0; margin-right: -10px; opacity: 0; transform: scale(.8); box-shadow: none; pointer-events: none; }
 .tkt.solo { display: none; flex-basis: 100%; } .fdl .tkt.solo { display: flex; height: auto; padding: 18px; }
 .tkt::before { content: ""; position: absolute; left: -34px; top: -34px; width: 120px; height: 120px; border-radius: 50%; z-index: -1; background: radial-gradient(circle, var(--uc), transparent 70%); opacity: .38; }
 .tkt .tr { position: relative; width: 46px; height: 46px; flex: none; }
@@ -666,7 +667,8 @@ document.addEventListener("scroll", e => {
   if (e.target.id !== "fpages") return;
   const el = e.target, i = Math.round(el.scrollLeft / el.clientWidth);
   document.querySelectorAll(".fsw button").forEach((b, k) => b.classList.toggle("on", k === i));
-  $("main").classList.toggle("fdl", i === 1);
+  clearTimeout(syncFocus.f);
+  syncFocus.f = setTimeout(() => $("main").classList.toggle("fdl", Math.round(el.scrollLeft / el.clientWidth) === 1), 160);
   if (Date.now() - (syncFocus.prog || 0) < 700) return; // прокрутили мы сами, а не свайп
   clearTimeout(syncFocus.t);
   syncFocus.t = setTimeout(() => { if (i !== focusPage()) { store.set("focusPage", { d: today(), i }); haptic("sel"); } }, 140);
