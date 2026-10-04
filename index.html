@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041845">
+<meta name="app-v" content="202610041850">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -500,7 +500,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
 };
 let ops = store.get("ops", []);
-const haptic = (t = "light") => { try { t === "sel" ? tg.HapticFeedback.selectionChanged() : t === "ok" ? tg.HapticFeedback.notificationOccurred("success") : tg.HapticFeedback.impactOccurred(t); } catch (e) {} };
+const haptic = (t = "light") => { try { t === "sel" ? tg.HapticFeedback.selectionChanged() : t === "ok" || t === "error" ? tg.HapticFeedback.notificationOccurred(t === "ok" ? "success" : "error") : tg.HapticFeedback.impactOccurred(t); } catch (e) {} };
 
 // ---------- время (Москва) ----------
 const msk = () => new Date(Date.now() + (new Date().getTimezoneOffset() + 180) * 60000);
@@ -1188,7 +1188,7 @@ function render(animate = true) {
   renderQueue();
 }
 function renderQueue() {
-  const n = ops.length, mb = !!(tg && tg.initData && tg.MainButton);
+  const n = ops.length, mb = !!(tg && tg.MainButton && tg.platform && tg.platform !== "unknown");
   $("queue").classList.toggle("on", n > 0);
   $("qn").textContent = n;
   $("qtext").textContent = n === 1 ? "изменение" : n < 5 ? "изменения" : "изменений";
@@ -1198,12 +1198,23 @@ function renderQueue() {
 }
 function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1900); }
 function addOp(o, msg) { ops.push(o); store.set("ops", ops); haptic("light"); if (msg) toast(msg); render(false); }
+// Telegram принимает sendData только от планера, открытого кнопкой на клавиатуре под полем ввода.
+// Из меню (кнопка слева от поля) данные молча отбрасываются — тогда возвращаем изменения в очередь и объясняем.
 function sendOps() {
+  if (!ops.length) return;
   const payload = JSON.stringify({ v: 1, ops });
-  if (!tg || !tg.initData) { toast("Открой планер кнопкой внизу чата"); return; }
+  if (!tg || !tg.platform || tg.platform === "unknown") { toast("Открой планер в Telegram кнопкой «📅 Планер»"); return; }
   if (payload.length > 4000) { tg.showAlert("Слишком много изменений сразу — отправь часть, потом остальное."); return; }
+  const keep = ops.slice();
   ops = []; store.set("ops", []); haptic("ok");
-  tg.sendData(payload);
+  try { tg.sendData(payload); } catch (e) {}
+  // приняли — планер сейчас закроется и этот таймер не сработает
+  setTimeout(() => {
+    if (ops.length) return;
+    ops = keep; store.set("ops", ops); render(false); haptic("error");
+    const m = "Из меню Telegram не даёт отправлять данные боту. Изменения сохранены: закрой планер, открой его кнопкой «📅 Планер» на клавиатуре под полем ввода и нажми «Отправить боту».";
+    tg.showPopup ? tg.showPopup({ title: "Открой с клавиатуры", message: m, buttons: [{ type: "ok" }] }) : tg.showAlert(m);
+  }, 1500);
 }
 // конфетти, когда задача сделана
 function burst(x, y) {
