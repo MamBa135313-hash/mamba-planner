@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="app-v" content="202610041307">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -271,6 +272,12 @@ textarea { min-height: 84px; resize: vertical; }
 <div class="toast" id="toast"></div>
 
 <script>
+// Telegram кэширует страницу: если на сайте новая версия — перезагружаемся на неё
+const APP_V = document.querySelector('meta[name="app-v"]').content;
+fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.json()).then(j => {
+  const q = new URLSearchParams(location.search);
+  if (j.v && j.v !== APP_V && q.get("v") !== j.v) { q.set("v", j.v); location.replace(location.pathname + "?" + q.toString()); }
+}).catch(() => {});
 const tg = window.Telegram && Telegram.WebApp;
 if (tg) {
   tg.ready(); tg.expand();
