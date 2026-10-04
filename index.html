@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610042220">
+<meta name="app-v" content="202610042233">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -281,7 +281,8 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .seg::-webkit-scrollbar { display: none; }
 .seg button { flex: 0 0 auto; border: 1px solid var(--stroke-2); background: var(--glass); backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%); color: var(--text-2); font-size: 13px; font-weight: 800; padding: 9px 14px; border-radius: 99px; transition: all .3s var(--ease); }
 .seg button b { opacity: .55; margin-left: 5px; font-weight: 800; }
-.seg button.on { background: var(--text); color: var(--bg); border-color: transparent; box-shadow: 0 10px 22px -10px rgba(0,0,0,.6); }
+.seg button.on { background: transparent; color: #fff; border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.seg button.on b { opacity: .8; }
 .wk { display: flex; align-items: center; justify-content: space-between; padding: 6px; border-radius: 99px; margin-top: 8px; }
 .wk .ar { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--stroke); display: grid; place-items: center; transition: transform .3s var(--spring); }
 .wk .ar:active { transform: scale(.88); }
@@ -306,6 +307,11 @@ nav.dock { touch-action: none; }
 .dock.drag .ind { transition: none; }
 .calbody .ls .rail::before { transform-origin: 50% 0; }
 .anim > .calbody, .anim > .days.seven { animation: none; }
+#main.anim:is([data-tab="tasks"], [data-tab="cards"], [data-tab="files"]) > * { animation: none; }   /* там всё анимирует JS — каскадом, по самим плиткам */
+.seg { position: relative; }
+.seg .segi { position: absolute; left: 0; top: 2px; border-radius: 99px; background: var(--grad); box-shadow: 0 10px 22px -10px rgba(139,123,255,.85), inset 0 1px 0 rgba(255,255,255,.4); pointer-events: none; z-index: 0; }
+.seg button { position: relative; z-index: 1; }
+.deck .pr i { transform-origin: 0 50%; }
 .wk b small { display: block; text-align: center; font: 800 10px Manrope, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-top: 3px; }
 .bd { display: flex; align-items: center; gap: 14px; padding: 12px 18px 16px; font-weight: 800; }
 .bd b { font-size: 30px; }
@@ -1001,7 +1007,7 @@ function vTasks() {
   const all = tasks();
   const F = { all: ["Все", t => !t.done], imp: ["❗️ Важные", t => !t.done && t.imp], soon: ["≤ 3 дня", t => !t.done && t.date && diff(t.date) <= 3], nodate: ["Без срока", t => !t.done && !t.date], files: ["📎 С файлами", t => !t.done && t.files?.length] };
   const list = all.filter(F[filter][1]);
-  let h = `<div class="seg">${Object.entries(F).map(([k, [n, f]]) => { const c = all.filter(f).length; return `<button class="${filter === k ? "on" : ""}" data-filter="${k}">${n}${c ? `<b>${c}</b>` : ""}</button>`; }).join("")}</div>`;
+  let h = `<div class="seg"><i class="segi"></i>${Object.entries(F).map(([k, [n, f]]) => { const c = all.filter(f).length; return `<button class="${filter === k ? "on" : ""}" data-filter="${k}">${n}${c ? `<b>${c}</b>` : ""}</button>`; }).join("")}</div>`;
   h += card(F[filter][0], list.length, list.length ? taskList(list) : empty("🎉", "Здесь пусто"));
   const done = all.filter(t => t.done);
   if (done.length) h += card("Отмечено", done.every(t => t.pend === "s") ? "отправлено боту" : "уйдёт боту", taskList(done), "var(--grad-ok)");
@@ -1038,7 +1044,7 @@ const MOTION = !matchMedia("(prefers-reduced-motion: reduce)").matches;
 const SPRING = "cubic-bezier(.2,.9,.25,1.08)", POP = "cubic-bezier(.34,1.56,.64,1)", EASE = "cubic-bezier(.2,.8,.2,1)";
 const PSEUDO = typeof KeyframeEffect !== "undefined" && "pseudoElement" in KeyframeEffect.prototype;
 // после конца анимация «отпускает» элемент — снова действуют обычные стили (тусклые прошедшие пары, свайпы)
-function anim(el, kf, o) { return MOTION && el ? el.animate(kf, { fill: "backwards", ...o }) : null; }
+function anim(el, kf, o) { if (!MOTION || !el) return null; try { return el.animate(kf, { fill: "backwards", ...o }); } catch (e) { return null; } }
 const tf = el => { const t = getComputedStyle(el).transform; return t === "none" ? "" : t; };
 // день «прорисовывается»: карточки въезжают, линия таймлайна бежит сверху вниз, точки пар вспыхивают, когда она до них доходит
 function calStagger(root, base = 60, dx = 0) {
@@ -1144,6 +1150,140 @@ function calWeekGo(step, keepSel, drag) {
     calTiles(dir); calStagger($("calbody"), 140, dir * 56);
   };
   outs.length ? Promise.all(outs.map(a => a.finished.catch(() => {}))).then(go) : go();
+}
+
+// ---------- анимации вкладок «Задачи», «Карточки», «Файлы» — в духе календаря ----------
+// Появляются каскадом сами «стеклянные» плитки и строки (не обёртки — иначе стекло теряет размытие), числа досчитывают,
+// полоски и кольца прогресса заполняются, выделение фильтра перетекает, а список при изменениях плавно перестраивается.
+let navDir = 0;   // 1 — зашли глубже (папка, колода), -1 — вернулись назад: в какую сторону въезжает экран
+function introDX() { const m = $("main").classList, d = navDir || (m.contains("slide-r") ? 1 : m.contains("slide-l") ? -1 : 0); navDir = 0; return d * 28; }
+// одна стартовая точка — конец берётся из обычных стилей элемента (прозрачность выключенной кнопки, масштаб отмеченной галочки)
+const from0 = (el, kf, o) => anim(el, [{ ...kf, offset: 0 }], o);
+function cascade(els, o = {}) {
+  const { base = 60, step = 45, max = 10, dx = 0, dy = 16, sc = .96, dur = 520, easing = SPRING } = o;
+  [...els].forEach((el, k) => from0(el, { opacity: 0, transform: `translate(${dx}px, ${dy}px) scale(${sc})` }, { duration: dur, delay: base + Math.min(k, max) * step, easing }));
+}
+// число в элементе досчитывает от нуля («52», «45%», «15/20»)
+function countUp(el, dur = 700, delay = 0) {
+  const m = /^(\D*)(\d+)(.*)$/s.exec(el?.textContent || "");
+  if (!MOTION || !m || +m[2] === 0) return;
+  const to = +m[2], t0 = performance.now() + delay;
+  el.textContent = m[1] + "0" + m[3];
+  const f = () => { const k = Math.min(1, Math.max(0, (performance.now() - t0) / dur)); el.textContent = m[1] + Math.round(to * (1 - Math.pow(1 - k, 3))) + m[3]; if (k < 1) requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+}
+const ringDraw = (root, delay = 150) => root?.querySelectorAll(".ring .fg").forEach(fg => anim(fg, [{ strokeDashoffset: fg.getAttribute("stroke-dasharray") }, { strokeDashoffset: fg.getAttribute("stroke-dashoffset") }], { duration: 1000, delay, easing: EASE }));
+// «жидкое» перетекание выделения (как у дня в календаре): тянется к новому месту, стягивается и чуть пружинит
+function liquid(el, f, t) {
+  const T = (x, w, sy = 1) => ({ transform: `translateX(${x}px) scaleY(${sy})`, width: `${w}px` });
+  const lo = Math.min(f.x, t.x), hi = Math.max(f.x + f.w, t.x + t.w), span = hi - lo - Math.max(f.w, t.w);
+  if (span < 2) return anim(el, [T(f.x, f.w), T(t.x, t.w)], { duration: 380, easing: POP });
+  const sq = Math.min(7, 2 + span / 40), L = lo < t.x - 1 ? t.x + sq : t.x, R = hi > t.x + t.w + 1 ? t.x + t.w - sq : t.x + t.w;
+  return anim(el, [{ ...T(f.x, f.w), easing: "cubic-bezier(.5,0,.3,1)" }, { ...T(lo, hi - lo, .86), offset: .4, easing: "cubic-bezier(.3,0,.2,1)" }, { ...T(L, R - L, 1.04), offset: .78, easing: "cubic-bezier(.3,0,.4,1)" }, T(t.x, t.w)], { duration: Math.min(760, 520 + span * .5) });
+}
+// фильтры задач: подсветка выбранного — «пилюля», которая перетекает между фильтрами
+const segFrom = () => { const b = document.querySelector("#main .seg button.on"); return b ? { x: b.offsetLeft, w: b.offsetWidth } : null; };
+function segPill(from, pop) {
+  const seg = document.querySelector("#main .seg"), pill = seg?.querySelector(".segi"), b = seg?.querySelector("button.on");
+  if (!pill || !b) return;
+  const t = { x: b.offsetLeft, w: b.offsetWidth };
+  Object.assign(pill.style, { top: b.offsetTop + "px", height: b.offsetHeight + "px", width: t.w + "px", transform: `translateX(${t.x}px)` });
+  if (from) liquid(pill, from, t);
+  else if (pop !== undefined) anim(pill, [{ opacity: 0, transform: `translateX(${t.x}px) scale(.6)` }, { opacity: 1, transform: `translateX(${t.x}px) scale(1)` }], { duration: 520, delay: pop, easing: POP });
+}
+// перерисовка списка без скачков: оставшиеся строки переезжают на новые места, новые проявляются, карточки плавно меняют высоту
+function renderSmooth(skip) {
+  if (!MOTION || (tab !== "tasks" && tab !== "cal")) { render(false); return; }
+  const rowId = r => r.querySelector("[data-open]")?.dataset.open, sy = scrollY, pos = new Map();
+  const secs = () => [...document.querySelectorAll("#main > section.card, #calbody > section.card")];
+  const key = (c, k) => tab === "tasks" && k === 0 ? "list" : c.querySelector(".ch h3")?.textContent || "";
+  document.querySelectorAll("#main .task").forEach(r => pos.set(rowId(r), r.getBoundingClientRect().top + sy));
+  const hs = new Map(secs().map((c, k) => [key(c, k), c.offsetHeight]));
+  render(false);
+  const sy2 = scrollY;
+  secs().forEach((c, k) => {
+    const h0 = hs.get(key(c, k)), h1 = c.offsetHeight;
+    if (h0 === undefined) from0(c, { opacity: 0, transform: "translateY(14px) scale(.98)" }, { duration: 480, easing: SPRING });
+    else if (Math.abs(h0 - h1) > 1) anim(c, [{ height: h0 + "px" }, { height: h1 + "px" }], { duration: 460, easing: SPRING });
+  });
+  document.querySelectorAll("#main .task").forEach(r => {
+    const id = rowId(r), y0 = pos.get(id), y1 = r.getBoundingClientRect().top + sy2;
+    if (y0 === undefined || id === skip) from0(r, { opacity: 0, transform: "translateY(10px) scale(.98)" }, { duration: 420, delay: 90, easing: EASE });
+    else if (Math.abs(y0 - y1) > 1) anim(r, [{ transform: `translateY(${y0 - y1}px)` }, { transform: "none" }], { duration: 460, easing: SPRING });
+  });
+}
+function tasksIntro() {
+  uiBusy(1300);
+  const dx = introDX(), m = $("main"), chips = [...m.querySelectorAll(".seg button")];
+  cascade(chips, { base: 30, step: 35, dx: dx || -14, dy: 4, sc: .9, dur: 460 });
+  segPill(null, 30 + Math.max(0, chips.findIndex(b => b.classList.contains("on"))) * 35 + 140);
+  cascade(m.querySelectorAll(":scope > section, :scope > .hint, :scope > .foot"), { base: 80, step: 90, dx, dy: dx ? 0 : 16, sc: .98, dur: 560 });
+  m.querySelectorAll(".task, .card > .ls").forEach((r, k) => {
+    const t0 = 150 + Math.min(k, 10) * 45;
+    from0(r, { opacity: 0, transform: "translateY(12px)" }, { duration: 460, delay: t0, easing: EASE });
+    from0(r.querySelector(".chk"), { transform: "scale(0)" }, { duration: 520, delay: t0 + 60, easing: POP });
+    from0(r.querySelector(".due"), { opacity: 0, transform: "scale(.6)" }, { duration: 520, delay: t0 + 110, easing: POP });
+  });
+}
+// плитки (колоды, папки, файлы): влетают волной, значки «подпрыгивают», числа досчитывают, полоски прогресса заполняются
+function tiles(m, dx) {
+  m.querySelectorAll(".deck, .folder, .file").forEach((t, k) => {
+    const d0 = 110 + Math.min(k, 8) * 70;
+    from0(t, { opacity: 0, transform: `translate(${dx}px, 22px) scale(.9)` }, { duration: 620, delay: d0, easing: SPRING });
+    t.querySelectorAll(".cnt").forEach(c => countUp(c, 700, d0 + 80));
+    t.querySelectorAll(".pr i").forEach(p => from0(p, { transform: "scaleX(0)" }, { duration: 800, delay: d0 + 220, easing: EASE }));
+    t.querySelectorAll(".fi").forEach(f => from0(f, { transform: "scale(.5) rotate(-12deg)" }, { duration: 640, delay: d0 + 120, easing: POP }));
+    t.querySelectorAll(".ty").forEach(b => from0(b, { opacity: 0, transform: "scale(.3) rotate(-25deg)" }, { duration: 660, delay: d0 + 120, easing: POP }));
+    t.querySelectorAll(".fbtns .btn").forEach((b, j) => from0(b, { opacity: 0, transform: "translateY(8px)" }, { duration: 440, delay: d0 + 230 + j * 60, easing: EASE }));
+  });
+}
+function cardsIntro() {
+  uiBusy(1300);
+  const m = $("main"), dx = introDX();
+  if (study) { studyIntro(); return; }
+  const dsc = m.querySelector(".dsc");
+  if (dsc) {   // экран колоды: кольцо дорисовывается, цифры досчитывают, режимы выезжают
+    from0(dsc, { opacity: 0, transform: `translate(${dx}px, 18px) scale(.97)` }, { duration: 560, easing: SPRING });
+    ringDraw(dsc); dsc.querySelectorAll(".ring .lb b").forEach(b => countUp(b, 900, 150));
+    dsc.querySelectorAll(".dnum > div").forEach((d, k) => { from0(d, { opacity: 0, transform: "translateY(10px)" }, { duration: 460, delay: 120 + k * 80, easing: SPRING }); countUp(d.querySelector("b"), 700, 150 + k * 80); });
+    from0(dsc.querySelector(".btn.big"), { opacity: 0, transform: "scale(.9)" }, { duration: 520, delay: 300, easing: POP });
+    cascade(m.querySelectorAll(".modes .mode"), { base: 320, step: 90, dx, dy: 18, sc: .94, dur: 560 });
+    m.querySelectorAll(".modes .mode svg").forEach((s, k) => from0(s, { transform: "scale(0) rotate(-30deg)" }, { duration: 620, delay: 440 + k * 90, easing: POP }));
+    cascade(m.querySelectorAll(":scope > .hint, :scope > .foot"), { base: 520, dy: 8 });
+    return;
+  }
+  cascade(m.querySelectorAll(":scope > .wk"), { base: 0, dy: -12, sc: 1, dur: 460 });
+  cascade(m.querySelectorAll(".ah .chip"), { base: 60, step: 60, dx: dx || -16, dy: 0, sc: .9 });
+  cascade(m.querySelectorAll(".unitgo"), { base: 130, dy: 14, sc: .94 });
+  tiles(m, dx);
+  cascade(m.querySelectorAll(":scope > section, :scope > .hint, :scope > .foot"), { base: 260, dy: 10 });
+}
+// зубрёжка: колода «раздаётся» — стопка разъезжается, карточка опускается сверху; итог — кольцо и цифры досчитывают
+function studyIntro() {
+  const m = $("main");
+  if (m.querySelector(".res")) {
+    const r = m.querySelector(".res");
+    from0(r, { opacity: 0, transform: "translateY(16px) scale(.94)" }, { duration: 560, easing: SPRING });
+    ringDraw(r); r.querySelectorAll(".ring .lb b").forEach(b => countUp(b, 900, 150));
+    from0(r.querySelector(".big"), { opacity: 0, transform: "scale(0) rotate(-30deg)" }, { duration: 700, delay: 120, easing: POP });
+    cascade(r.querySelectorAll(".miss > div"), { base: 260, step: 50, dy: 10 });
+    cascade(m.querySelectorAll(".cardbar .btn"), { base: 300, step: 80, dy: 14, sc: .94 });
+    return;
+  }
+  from0(m.querySelector(".dh"), { opacity: 0, transform: "translateY(-14px)" }, { duration: 460, easing: SPRING });
+  const [g2, g1] = m.querySelectorAll(".stack .gh");
+  from0(g2, { opacity: 0, transform: "translateY(60px) scale(.8)" }, { duration: 560, delay: 60, easing: SPRING });
+  from0(g1, { opacity: 0, transform: "translateY(50px) scale(.84)" }, { duration: 560, delay: 110, easing: SPRING });
+  from0(m.querySelector("#flip"), { opacity: 0, transform: "translateY(-70px) rotate(-6deg) scale(.9)" }, { duration: 620, delay: 170, easing: SPRING });
+  cascade(m.querySelectorAll(".cardbar .btn, :scope > .hint"), { base: 300, step: 60, dy: 14, sc: .96 });
+}
+function filesIntro() {
+  uiBusy(1300);
+  const m = $("main"), dx = introDX();
+  cascade(m.querySelectorAll(":scope > .wk"), { base: 0, dy: -12, sc: 1, dur: 460 });
+  cascade(m.querySelectorAll(".ah .chip"), { base: 60, step: 60, dx: dx || -16, dy: 0, sc: .9 });
+  tiles(m, dx);
+  cascade(m.querySelectorAll(":scope > section, :scope > .foot"), { base: 280, dy: 10 });
 }
 
 // ---------- карточки: интервальные повторения (как в Anki) ----------
@@ -1265,7 +1405,8 @@ function answer(ok) {
   S.pos++; S.flipped = false;
   if (!S.busy) haptic(ok ? "ok" : "light");   // при свайпе и ответе кнопкой отклик уже был в момент нажатия
   if (S.pos >= S.q.length && (S.mode !== "test" || S.right >= S.wrong.length)) setTimeout(() => burst(innerWidth / 2, innerHeight / 3), 120);
-  S.busy = false; render(false); cardIn("stack");
+  S.busy = false; render(false);
+  if (S.pos >= S.q.length) studyIntro(); else cardIn("stack");
 }
 // ответ кнопкой: карточка улетает так же, как при свайпе, с отметкой «ЗНАЮ» / «ЕЩЁ РАЗ»
 function flyAnswer(ok) {
@@ -1516,6 +1657,7 @@ async function viewFile(f, opt = {}) {
   v.dataset.path = f.path; vb.innerHTML = ""; vb.style.transform = ""; v.style.removeProperty("--vo");
   $("vtitle").textContent = dispName(f); $("vpage").textContent = "";
   v.classList.add("on"); loading(true); haptic("light"); syncBack(); syncVSwipes();
+  if (opt.from && MOTION) { const r = opt.from, W = innerWidth, H = innerHeight; anim(v, [{ clipPath: `inset(${r.top}px ${W - r.right}px ${H - r.bottom}px ${r.left}px round 24px)` }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }], { duration: 440, easing: "cubic-bezier(.2,.8,.2,1)" }); }
   // если закрыть mini с открытым файлом — в следующий раз (в течение получаса) откроется он же, на той же странице
   store.set("lastView", { path: f.path, tab, ffold, page: opt.page || 0, at: Date.now() });
   const me = V;
@@ -2000,12 +2142,14 @@ function render(animate = true) {
   const i = TABS.findIndex(x => x[0] === tab), j = TABS.findIndex(x => x[0] === prevTab);
   const main = $("main");
   main.className = animate ? "anim" + (prevTab && prevTab !== tab ? (i > j ? " slide-r" : " slide-l") : "") : "";
+  main.dataset.tab = tab;
   const keepX = animate ? [] : [".seg", ".tkts"].map(q => [q, main.querySelector(q)?.scrollLeft || 0]);
   main.innerHTML = V() + `<div class="foot"><span>${offline ? "нет сети · " : ""}обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
   prevTab = tab;
   if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); }
   for (const [q, x] of keepX) { const el = x && main.querySelector(q); if (el) el.scrollLeft = x; }
-  if (tab === "cal" && animate) calIntro();
+  if (tab === "tasks") segPill();
+  if (animate) ({ cal: calIntro, tasks: tasksIntro, cards: cardsIntro, files: filesIntro })[tab]?.();
   $("fab").style.display = tab === "tasks" || tab === "today" || tab === "cal" ? "grid" : "none";
   syncBack();
   renderQueue();
@@ -2020,7 +2164,7 @@ function renderQueue() {
   if (mb) { if (n) { tg.MainButton.setParams({ text: "Отправить боту · " + n, color: "#7b6cff", text_color: "#ffffff" }); tg.MainButton.show(); } else tg.MainButton.hide(); }
 }
 function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1900); }
-function addOp(o, msg) { ops.push(o); store.set("ops", ops); haptic("light"); if (msg) toast(msg); render(false); }
+function addOp(o, msg) { ops.push(o); store.set("ops", ops); haptic("light"); if (msg) toast(msg); renderSmooth(o.op === "done" ? String(o.id) : null); }
 // Telegram принимает sendData только от планера, открытого кнопкой на клавиатуре под полем ввода.
 // Из меню (кнопка слева от поля) данные молча отбрасываются — тогда возвращаем изменения в очередь и объясняем.
 function sendOps() {
@@ -2058,7 +2202,9 @@ function markDone(id, from) {
   const r = from?.getBoundingClientRect();
   if (r) burst(r.left + 20, r.top + r.height / 2);
   haptic("ok");
-  setTimeout(() => addOp({ op: "done", id }, "✅ #" + id + " — сделано"), 320);
+  const row = document.querySelector(`#main .tk[data-open="${id}"]`)?.closest(".task");
+  if (row && MOTION) setTimeout(() => { row.style.overflow = "hidden"; anim(row, [{ height: row.offsetHeight + "px", opacity: 1 }, { height: "0px", opacity: 0 }], { duration: 300, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }); }, 170);
+  setTimeout(() => addOp({ op: "done", id }, "✅ #" + id + " — сделано"), row && MOTION ? 480 : 320);
 }
 
 // ---------- жесты: свайп задач, карточек и шторки ----------
@@ -2179,8 +2325,8 @@ document.addEventListener("click", e => {
   if (s.ans !== undefined) { if (study) flyAnswer(s.ans === "1"); return; }
   if (s.sx === "undo") { if (study) undoAnswer(); return; }
   if (s.sx === "finish") { if (study) { study.q = study.q.slice(0, study.pos); haptic("sel"); render(false); } return; }
-  if (s.sx === "end") { study = null; haptic("sel"); render(); scrollTo({ top: 0 }); return; }
-  if (s.fold !== undefined) { if (s.fold) { if (s.fk === "c") cfold = s.fold; else ffold = s.fold; haptic("light"); render(); scrollTo({ top: 0 }); } else goBack(); return; }
+  if (s.sx === "end") { study = null; navDir = -1; haptic("sel"); render(); scrollTo({ top: 0 }); return; }
+  if (s.fold !== undefined) { if (s.fold) { if (s.fk === "c") cfold = s.fold; else ffold = s.fold; navDir = 1; haptic("light"); render(); scrollTo({ top: 0 }); } else goBack(); return; }
   if (s.scroll) { $(s.scroll)?.scrollIntoView({ behavior: "smooth", block: "start" }); haptic("sel"); return; }
   if (s.dp !== undefined) { syncChats(+s.dp, true); return; }
   if (s.fp !== undefined) { store.set("focusPage", { d: today(), i: +s.fp }); syncFocus(+s.fp, true); haptic("sel"); return; }
@@ -2191,13 +2337,13 @@ document.addEventListener("click", e => {
   if (s.tmr) { addOp({ op: "tmr", id: +s.tmr }, "⏰ #" + s.tmr + " — на завтра"); return; }
   if (s.move) { moveSheet(+s.move); return; }
   if (s.imp) { const t = tasks().find(x => x.id === +s.imp); addOp({ op: "imp", id: +s.imp, value: !t.imp }, t.imp ? "Пометка снята" : "❗️ Отмечено важным"); return; }
-  if (s.filter) { filter = s.filter; haptic("sel"); render(false); segReveal(); return; }
+  if (s.filter) { if (s.filter === filter) return; const from = segFrom(); filter = s.filter; haptic("sel"); renderSmooth(); segPill(from); segReveal(); return; }
   if (s.day) { if (tab === "cal") calSelect(s.day); else { selDay = s.day; haptic("sel"); render(false); } return; }
   if (s.week) { calWeekGo(+s.week); return; }
-  if (s.deck) { deck = +s.deck; study = null; haptic("light"); render(); scrollTo({ top: 0 }); return; }
+  if (s.deck) { deck = +s.deck; study = null; navDir = 1; haptic("light"); render(); scrollTo({ top: 0 }); return; }
   if (el.id === "flip") { if (study) { study.flipped = !study.flipped; el.classList.toggle("on", study.flipped); } haptic("light"); return; }
   if (s.fdl) { const f = fileBy(s.fdl); if (f) dlFile(f); return; }
-  if (s.fview) { const f = fileBy(s.fview); if (f) viewFile(f); return; }
+  if (s.fview) { const f = fileBy(s.fview); if (f) viewFile(f, { from: (el.closest(".file") || el).getBoundingClientRect() }); return; }
   if (s.vclose !== undefined) { closeViewer(); return; }
   if (s.vdl !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) dlFile(f); return; }
   if (s.vsend !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) { closeViewer(); addOp({ op: "send_file", path: f.path, task: f.task }, "📩 Придёт в чат после отправки"); } return; }
@@ -2215,11 +2361,11 @@ document.addEventListener("click", e => {
     if (!date) return;
     closeSheet(); addOp({ op: "move", id: draft.id, date, time }, "📅 #" + draft.id + " → " + ddmm(date)); return;
   }
-  if (s.open !== undefined && !e.target.closest("button")) { const id = isNaN(+s.open) ? s.open : +s.open; openTask = openTask === id ? null : id; haptic("sel"); render(false); return; }
+  if (s.open !== undefined && !e.target.closest("button")) { const id = isNaN(+s.open) ? s.open : +s.open; openTask = openTask === id ? null : id; haptic("sel"); renderSmooth(); return; }
 });
 $("scrim").onclick = closeSheet;
 $("fab").onclick = () => { haptic("light"); addSheet(); if (tab === "cal" && selDay) setTimeout(() => { const b = document.querySelector(`#nq [data-qd="${selDay}"]`); $("ndate").value = selDay; draft.date = selDay; b?.classList.add("on"); }, 0); };
-$("undo").onclick = () => { ops.pop(); store.set("ops", ops); toast("↩︎ Отменено"); render(false); };
+$("undo").onclick = () => { const o = ops.pop(); store.set("ops", ops); toast("↩︎ Отменено"); renderSmooth(o?.op === "done" ? String(o.id) : null); };
 $("send").onclick = sendOps;
 if (tg?.MainButton) tg.MainButton.onClick(sendOps);
 if (tg?.BackButton) tg.BackButton.onClick(() => { goBack(); });
@@ -2245,6 +2391,7 @@ function goTab(t, again) {
 function goBack() {
   if (viewerOn()) { closeViewer(); haptic("sel"); return; }
   if (sheetOn()) { closeSheet(); haptic("sel"); return; }
+  navDir = -1;
   if (tab === "cards" && study) study = null; else if (tab === "cards" && deck !== null) deck = null; else if (tab === "cards") cfold = null; else ffold = null; haptic("sel"); render(); scrollTo({ top: 0 }); }
 
 // шапка мягко уходит при прокрутке, сверху появляется компактная полоса
