@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610042125">
+<meta name="app-v" content="202610042214">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -249,8 +249,11 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .task.done .tt { text-decoration: line-through; color: var(--text-3); }
 .tm { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .src { font-size: 12px; color: var(--text-3); margin-top: 6px; font-weight: 600; }
-.more { display: none; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.more { display: none; grid-column: 1 / -1; flex-direction: column; gap: 8px; margin-top: -3px; }
 .task.open .more { display: flex; animation: rise .35s var(--ease) both; }
+.more .tfl { display: flex; flex-wrap: wrap; } .more .tfl .fpill { margin: 0 6px 4px 0; }
+.more .acts { display: flex; gap: 6px; }
+.more .acts .btn { flex: 1; min-width: 0; justify-content: center; padding: 10px 6px; font-size: 12.5px; white-space: nowrap; }
 .due { min-width: 48px; text-align: center; padding: 7px 6px 6px; border-radius: 15px; background: var(--stroke); color: var(--text-2); }
 .due b { display: block; font: 600 19px/1 var(--disp); letter-spacing: -.04em; }
 .due b.s { font-size: 13px; letter-spacing: -.02em; padding: 3px 0 2px; }
@@ -298,7 +301,9 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .days.seven .day.on::after { opacity: 0; }
 .days.seven .day { transition: transform .45s var(--spring), background .3s; }
 .day .ld i { transform-origin: 50% 100%; }
-.calbody { touch-action: pan-y; }
+html { touch-action: pan-y; }   /* вертикально листает браузер, вбок — свайп между вкладками (карусели, ленты и просмотр файла — свои области прокрутки, у них всё как раньше) */
+nav.dock { touch-action: none; }
+.dock.drag .ind { transition: none; }
 .calbody .ls .rail::before { transform-origin: 50% 0; }
 .anim > .calbody, .anim > .days.seven { animation: none; }
 .wk b small { display: block; text-align: center; font: 800 10px Manrope, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-top: 3px; }
@@ -306,7 +311,7 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .bd b { font-size: 30px; }
 
 /* ---------- карточки ---------- */
-.decks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.decks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
 .deck { position: relative; overflow: hidden; isolation: isolate; padding: 16px; border-radius: 24px; min-height: 160px; display: flex; flex-direction: column; justify-content: space-between; color: var(--text); border: 0; text-align: left;
   background: linear-gradient(160deg, color-mix(in srgb, var(--dc) 24%, rgba(14,16,34,.55)), rgba(14,16,34,.5) 75%);
   backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
@@ -349,7 +354,7 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .hint { text-align: center; font-size: 12px; font-weight: 700; color: var(--on-sky-2, var(--text-3)); margin-top: 12px; }
 
 /* ---------- файлы ---------- */
-.files { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
 .file { padding: 15px; display: flex; flex-direction: column; gap: 10px; min-height: 172px; }
 .file .ty { position: relative; width: 44px; height: 54px; border-radius: 10px 16px 10px 10px; display: grid; place-items: end center; padding-bottom: 8px; font: 700 9.5px var(--disp); letter-spacing: .02em; color: #fff; background: var(--fc); box-shadow: 0 12px 22px -10px var(--fc); }
 .file .ty::before { content: ""; position: absolute; right: 0; top: 0; width: 15px; height: 15px; border-radius: 0 0 0 6px; background: linear-gradient(225deg, var(--bg-2) 50%, rgba(255,255,255,.55) 50%); opacity: .9; }
@@ -357,7 +362,7 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .file .ft { font-size: 11.5px; color: var(--text-3); font-weight: 700; }
 .file .btn { justify-content: center; }
 .ah { margin: 18px 2px 10px; } .ah .chip { font-size: 13px; }
-.folders { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.folders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .folder { border: 0; text-align: left; color: var(--text); padding: 16px 16px 15px; min-height: 140px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; border-radius: 24px; transition: transform .4s var(--spring); }
 .folder:active { transform: scale(.95); }
 .folder .fi { width: 58px; height: 46px; margin-bottom: auto; filter: drop-shadow(0 10px 16px color-mix(in srgb, var(--fc) 55%, transparent)); }
@@ -365,16 +370,25 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .folder .fi .fr { fill: var(--fc); }
 .folder b { font: 600 16px/1.2 var(--disp); letter-spacing: -.03em; margin-top: 12px; }
 .folder span { font-size: 12px; font-weight: 800; color: var(--text-2); }
-.fbtns { display: flex; gap: 8px; } .fbtns .btn { white-space: nowrap; } .fbtns .btn.pri { flex: 1; }
-.fpill { border: 0; margin: 0 6px 6px 0; padding: 6px 10px; font-size: 12px; cursor: pointer; }
-.fbtns .btn.sq { flex: none; width: 46px; justify-content: center; padding: 10px 0; }
+.fbtns { display: flex; gap: 6px; } .fbtns .btn { white-space: nowrap; } .fbtns .btn.pri { flex: 1; min-width: 0; overflow: hidden; justify-content: center; padding-left: 7px; padding-right: 7px; }
+@media (max-width: 380px) { .fbtns .btn.pri svg { display: none; } }
+.fpill { border: 0; margin: 0 6px 6px 0; padding: 7px 11px; font-size: 12px; line-height: 1.3; cursor: pointer; white-space: normal; text-align: left; max-width: 100%; border-radius: 14px; overflow-wrap: anywhere; }
+.fbtns .btn.sq { flex: none; width: 42px; justify-content: center; padding: 10px 0; }
 .viewer { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: rgba(3,4,10,.94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   padding: calc(var(--safe-top) + 12px) 0 calc(14px + env(safe-area-inset-bottom)); opacity: 0; pointer-events: none; transition: opacity .3s; }
 .viewer.on { opacity: 1; pointer-events: auto; }
-.vbody { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 0 12px; -webkit-overflow-scrolling: touch; }
-.vbody img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 16px; box-shadow: 0 30px 60px -20px #000; animation: rise .45s var(--spring); }
-.vbody .pdf { align-self: flex-start; display: flex; flex-direction: column; gap: 10px; padding: 4px 0 10px; }
-.vbody .pdf canvas { border-radius: 10px; box-shadow: 0 16px 30px -14px #000; background: #fff; max-width: 100%; }
+.viewer { background: rgba(3,4,10, calc(.94 * var(--vo, 1))); }
+.vtop { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 18px 10px; min-height: 28px; }
+.vtitle { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.5px; font-weight: 800; color: var(--text-2); }
+.vpage { flex: none; padding: 5px 10px; border-radius: 99px; background: var(--stroke-2); font: 600 12px/1 var(--disp); color: var(--text); font-variant-numeric: tabular-nums; }
+.vpage:empty { display: none; }
+.vbody { flex: 1; min-height: 0; overflow: auto; position: relative; touch-action: pan-x pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.vbody::-webkit-scrollbar { display: none; }
+.vz { position: relative; transform-origin: 0 0; animation: rise .45s var(--spring) both; }
+.vz img { position: absolute; display: block; border-radius: 16px; box-shadow: 0 30px 60px -20px #000; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.vz .col { display: flex; flex-direction: column; align-items: flex-start; gap: calc(10px * var(--z, 1)); padding: 4px 0 calc(10px * var(--z, 1)); }
+.vz canvas { display: block; flex: none; border-radius: 10px; box-shadow: 0 16px 30px -14px #000; background: #fff; }
+.vbody .msg { padding-top: 30vh; }
 .vspin { position: absolute; left: 50%; top: 45%; width: 38px; height: 38px; margin: -19px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: var(--accent-2); animation: rot .8s linear infinite; display: none; }
 .viewer.busy .vspin { display: block; }
 @keyframes rot { to { transform: rotate(360deg); } }
@@ -399,7 +413,8 @@ nav.dock::after { content: ""; position: absolute; inset: 0; border-radius: inhe
 .nb .dot:empty { display: none; }
 
 /* ---------- кнопка «+», очередь, шторки, тосты ---------- */
-.fab { position: fixed; right: 18px; bottom: calc(98px + env(safe-area-inset-bottom)); z-index: 19; width: 60px; height: 60px; border: 0; border-radius: 22px; background: none; display: grid; place-items: center; isolation: isolate; transition: transform .45s var(--spring), bottom .45s var(--spring); }
+.fab { position: fixed; right: 18px; bottom: calc(98px + env(safe-area-inset-bottom)); z-index: 19; width: 60px; height: 60px; border: 0; border-radius: 22px; background: none; display: grid; place-items: center; isolation: isolate; transition: transform .45s var(--spring), bottom .45s var(--spring), opacity .3s; }
+.fab.away { transform: translateY(140%) scale(.6); opacity: 0; pointer-events: none; }
 .fab::before { content: ""; position: absolute; inset: -4px; border-radius: 26px; z-index: -2; background: conic-gradient(from var(--a), #8b7bff, #45dcff, #ff5fa2, #ffd25c, #8b7bff); filter: blur(10px); opacity: .75; animation: spin 5s linear infinite; }
 .fab::after { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; background: var(--grad); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 16px rgba(40,20,120,.25); }
 .fab svg { width: 26px; height: 26px; stroke: #fff; stroke-width: 2.8; stroke-linecap: round; fill: none; transition: transform .45s var(--spring); }
@@ -490,6 +505,7 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 .mode b { font: 600 14.5px/1.2 var(--disp); letter-spacing: -.03em; }
 .mode span { font-size: 11.5px; font-weight: 700; color: var(--text-2); line-height: 1.35; }
 .res .rt { font: 600 20px/1.2 var(--disp); letter-spacing: -.03em; }
+.btn.unitgo { width: 100%; justify-content: center; padding: 13px; font-size: 14.5px; border-radius: 18px; margin: 2px 0 4px; }
 .res .rs { color: var(--text-2); font-weight: 700; font-size: 13px; margin-top: 5px; line-height: 1.4; }
 .res .big { font-size: 46px; line-height: 1; }
 .miss { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -545,16 +561,19 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 <nav class="dock" id="nav"></nav>
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet"></div>
-<div class="viewer" id="viewer"><div class="vbody" id="vbody"></div><div class="vspin"></div><div class="vbar" id="vbar"></div></div>
+<div class="viewer" id="viewer"><div class="vtop"><span class="vtitle" id="vtitle"></span><span class="vpage" id="vpage"></span></div><div class="vbody" id="vbody"></div><div class="vspin"></div><div class="vbar" id="vbar"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 // Telegram кэширует страницу: если на сайте новая версия — перезагружаемся на неё
 const APP_V = document.querySelector('meta[name="app-v"]').content;
-fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.json()).then(j => {
-  const q = new URLSearchParams(location.search);
-  if (j.v && j.v !== APP_V && q.get("v") !== j.v) { q.set("v", j.v); location.replace(location.pathname + "?" + q.toString()); }
-}).catch(() => {});
+function checkVersion(safe = () => true) {
+  return fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.json()).then(j => {
+    const q = new URLSearchParams(location.search);
+    if (j.v && j.v !== APP_V && q.get("v") !== j.v && safe()) { q.set("v", j.v); location.replace(location.pathname + "?" + q.toString()); }
+  }).catch(() => {});
+}
+checkVersion();
 const QS = new URLSearchParams(location.search);
 const tg = window.Telegram && Telegram.WebApp;
 if (tg) {
@@ -607,6 +626,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
 };
 let ops = store.get("ops", []);
+// отправленные боту изменения: показываем их, пока бот их не применит (он разбирает их раз в час) — иначе после отправки задача «возвращалась»
+let sent = store.get("sent", []);
 const haptic = (t = "light") => { try { t === "sel" ? tg.HapticFeedback.selectionChanged() : t === "ok" || t === "error" ? tg.HapticFeedback.notificationOccurred(t === "ok" ? "success" : "error") : tg.HapticFeedback.impactOccurred(t); } catch (e) {} };
 
 // ---------- время (Москва) ----------
@@ -630,29 +651,87 @@ const colOf = l => l.vuc ? "#ffb547" : `hsl(${hueOf(l.n)} 85% 66%)`;
 
 // ---------- данные ----------
 let KEY = null; // ключ планера: им же расшифровываются файлы
-async function load() {
+let dataTxt = null, fetchedAt = 0, offline = false, pendingD = null;
+async function getKey() {
+  if (KEY) return KEY;
   const k = QS.get("k");
   if (!k) throw new Error("Открой планер кнопкой «📅 Планер» в чате с ботом.");
   const raw = Uint8Array.from(atob(k.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((k.length + 3) % 4)), c => c.charCodeAt(0));
-  const key = KEY = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+  return KEY = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+}
+async function decryptData(txt) {
+  const enc = JSON.parse(txt), b = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b(enc.iv) }, await getKey(), b(enc.ct));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+async function fetchData() {
   const res = await fetch("data.enc?t=" + Date.now(), { cache: "no-store" });
   if (!res.ok) throw new Error("Бот ещё не опубликовал данные.");
-  const enc = await res.json(), b = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b(enc.iv) }, key, b(enc.ct));
-  return JSON.parse(new TextDecoder().decode(plain));
+  const txt = await res.text();
+  fetchedAt = Date.now(); offline = false;
+  try { localStorage.setItem("dataEnc", txt); } catch (e) {}
+  return txt;
+}
+function reopenFile() {
+  const lv = store.get("lastView", null), f = lv && Date.now() - lv.at < 30 * 60e3 && fileBy(lv.path);
+  if (!f || !viewable(f)) { try { localStorage.removeItem("lastView"); } catch (e) {} return; }
+  if (!QS.get("tab") && lv.tab && lv.tab !== tab) { tab = lv.tab; ffold = lv.ffold || null; render(); }
+  viewFile(f, { page: lv.page || 0 });
+}
+function showData(d, txt) {
+  dataTxt = txt;
+  if (!D) { D = d; pruneSent(); W = W || d.weather || null; applySky(); render(); srsSync(); reopenFile(); }
+  else { pendingD = d; applyPending(); }
+}
+// свежие данные не перебивают то, чем ты занят: учишь карточки, смотришь файл, открыта шторка — применим, когда освободишься
+function applyPending() {
+  clearTimeout(applyPending.t);
+  if (!pendingD) return;
+  if (study || G || $("viewer").classList.contains("on") || $("sheet").classList.contains("on") || Date.now() < busyTill) { applyPending.t = setTimeout(applyPending, 1500); return; }
+  const did = deck !== null && D.cards?.[deck] ? deckId(D.cards[deck]) : null;
+  D = pendingD; pendingD = null; pruneSent();
+  if (did) { const i = (D.cards || []).findIndex(x => deckId(x) === did); deck = i >= 0 ? i : null; }
+  W = W || D.weather || null; render(false);
+}
+// при возвращении в mini и раз в 10 минут: нет ли нового от бота (и новой версии mini)
+async function refreshData(force) {
+  if (!D || (!force && Date.now() - fetchedAt < 90e3)) return;
+  checkVersion(() => !study && !G && !ops.length && !$("viewer").classList.contains("on") && !$("sheet").classList.contains("on"));
+  try {
+    const txt = await fetchData();
+    if (txt !== dataTxt) showData(await decryptData(txt), txt);
+  } catch (e) { offline = true; }
 }
 function tasks() {
   const L = D.tasks.map(t => ({ ...t }));
-  for (const o of ops) {
+  // pend: "q" — ждёт отправки, "s" — отправлено, бот применит в ближайший запуск
+  const apply = (o, pend) => {
     const t = L.find(x => x.id === o.id);
-    if (o.op === "add") L.push({ id: "n" + o.n, text: o.text, date: o.date, time: o.time, imp: !!o.imp, files: [], src: "из планера", pend: true });
-    else if (!t) continue;
-    else if (o.op === "done") t.done = true;
-    else if (o.op === "tmr" && t.date) { t.date = iso(add(P(t.date), 1)); t.pend = true; }
-    else if (o.op === "move") { t.date = o.date; if (o.time) t.time = o.time; t.pend = true; }
-    else if (o.op === "imp") { t.imp = o.value; t.pend = true; }
-  }
+    if (o.op === "add") L.push({ id: "n" + o.n, text: o.text, date: o.date, time: o.time, imp: !!o.imp, files: [], src: "из планера", pend });
+    else if (!t) return;
+    else if (o.op === "done") { t.done = true; t.pend = pend; }
+    else if (o.op === "tmr" && t.date) { t.date = iso(add(P(t.date), 1)); t.pend = pend; }
+    else if (o.op === "move") { t.date = o.date; if (o.time) t.time = o.time; t.pend = pend; }
+    else if (o.op === "imp") { t.imp = o.value; t.pend = pend; }
+  };
+  for (const o of sent) apply(o, "s");
+  for (const o of ops) apply(o, "q");
   return L.sort((a, b) => (a.date || "9").localeCompare(b.date || "9") || (a.time || "9").localeCompare(b.time || "9"));
+}
+function pruneSent() {
+  const now = Date.now(), gen = Date.parse(D.generated) || 0, norm = x => String(x || "").replace(/\s+/g, " ").trim().toLowerCase();
+  sent = sent.filter(o => {
+    if (now - o.at > 6 * 36e5 || gen > o.at + 70 * 6e4) return false;
+    const t = D.tasks.find(x => x.id === o.id);
+    if (o.op === "done") return !!t;                                   // бот удаляет сделанную задачу
+    if (o.op === "add") return !D.tasks.some(x => norm(x.text) === norm(o.text));
+    if (!t) return false;
+    if (o.op === "tmr") return t.date === o.from;                      // срок ещё прежний
+    if (o.op === "move") return t.date !== o.date || (!!o.time && t.time !== o.time);
+    if (o.op === "imp") return !!t.imp !== !!o.value;
+    return false;
+  });
+  store.set("sent", sent);
 }
 function lessons(ds) {
   const S = D.schedule;
@@ -690,17 +769,19 @@ function taskEl(t) {
   if (t.date) meta.push(`<span class="pill">${t.approx ? "~" : ""}${short(t.date)}${t.time ? " · " + t.time : ""}</span>`);
   if (t.imp) meta.push('<span class="pill hot">❗️ важно</span>');
   if (t.files?.length) meta.push(`<span class="pill acc">📎 ${t.files.length}</span>`);
-  if (t.pend) meta.push('<span class="pill ok">ждёт бота</span>');
+  if (t.pend) meta.push(t.pend === "s" ? '<span class="pill ok">отправлено</span>' : '<span class="pill ok">ждёт отправки</span>');
   return `<div class="task ${t.done ? "done" : ""} ${openTask === t.id ? "open" : ""}">
     ${sw ? `<div class="rev l"><span>✓ Сделано</span></div><div class="rev r"><span>${t.date ? "⏰ Завтра" : "📅 Срок"}</span></div>` : ""}
     <div class="tk" data-open="${t.id}" ${sw ? `data-sw="${id}"` : ""}>
       <button class="chk" ${sw ? "" : "disabled"} data-done="${id}" aria-label="Сделано"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
-      <div class="tb"><div class="tt">${esc(t.text)}</div><div class="tm">${meta.join("")}</div>${t.src ? `<div class="src">${esc(t.src)}</div>` : ""}
-      ${sw ? `<div class="more">${t.date ? `<button class="btn" data-tmr="${id}">${IC.alarm}Завтра</button>` : ""}<button class="btn" data-move="${id}">${IC.move}Перенести</button><button class="btn" data-imp="${id}">${IC.flag}${t.imp ? "Не важно" : "Важно"}</button></div>` : ""}</div>
+      <div class="tb"><div class="tt">${esc(t.text)}</div><div class="tm">${meta.join("")}</div>${t.src ? `<div class="src">${esc(t.src)}</div>` : ""}</div>
       ${dueEl(t)}
+      ${sw ? `<div class="more">${t.files?.length ? `<div class="tfl">${t.files.map(fileChip).join("")}</div>` : ""}<div class="acts">${t.date ? `<button class="btn" data-tmr="${id}">${IC.alarm}Завтра</button>` : ""}<button class="btn" data-move="${id}">${IC.move}Перенести</button><button class="btn" data-imp="${id}">${IC.flag}${t.imp ? "Не важно" : "Важно"}</button></div></div>` : ""}
     </div></div>`;
 }
 const taskList = L => L.map(taskEl).join("");
+// файл задачи: открыть (фото, PDF, Word/Excel/PowerPoint через PDF-копию) или сохранить
+const fileChip = f => { const g = fileBy(f.path); return g?.enc ? `<button class="pill acc fpill" data-${viewable(g) ? "fview" : "fdl"}="${esc(f.path)}">📎 ${esc(dispName(f))} · ${viewable(g) ? "открыть" : "сохранить"}</button>` : `<div class="pill acc fpill">📎 ${esc(dispName(f))}</div>`; };
 
 function timeline(ds, due = []) {
   const L = lessons(ds);
@@ -885,12 +966,12 @@ function taskSheet(id) {
   if (nid !== null) pills.push(`<span class="pill">#${nid}</span>`);
   if (t.date) pills.push(`<span class="pill">${t.approx ? "~" : ""}${short(t.date)}${t.time ? " · " + t.time : ""}</span>`);
   if (t.imp) pills.push('<span class="pill hot">❗️ важно</span>');
-  if (t.pend) pills.push('<span class="pill ok">ждёт бота</span>');
+  if (t.pend) pills.push(t.pend === "s" ? '<span class="pill ok">отправлено</span>' : '<span class="pill ok">ждёт отправки</span>');
   sheet(`<div class="tsh" style="--uc:${m === null ? "var(--accent)" : ucol(m)}">
     <div class="cd"><b>${n}</b><span>${u}${t.date ? " · " + relTxt(t.date) : ""}</span></div>
     <h4 class="${t.text.length > 60 ? "long" : ""}">${esc(t.text)}</h4><div class="tm">${pills.join("")}</div>
     ${t.src ? `<p style="margin-top:10px">${esc(t.src)}</p>` : ""}
-    ${(t.files || []).map(f => { const g = fileBy(f.path); return g?.enc ? `<button class="pill acc fpill" data-${viewable(g) ? "fview" : "fdl"}="${esc(f.path)}">📎 ${esc(f.name)} · ${viewable(g) ? "открыть" : "сохранить"}</button>` : `<div class="pill acc" style="margin:0 6px 6px 0">📎 ${esc(f.name)}</div>`; }).join("")}
+    ${(t.files || []).map(fileChip).join("")}
     ${nid !== null ? `<div class="acts"><button class="btn pri" data-done="${nid}">✓ Сделано</button>${t.date ? `<button class="btn" data-tmr="${nid}">⏰ На завтра</button>` : ""}<button class="btn" data-move="${nid}">📅 Перенести</button><button class="btn" data-imp="${nid}">${t.imp ? "Снять ❗️" : "❗️ Важно"}</button></div>` : ""}</div>`);
 }
 
@@ -923,7 +1004,7 @@ function vTasks() {
   let h = `<div class="seg">${Object.entries(F).map(([k, [n, f]]) => { const c = all.filter(f).length; return `<button class="${filter === k ? "on" : ""}" data-filter="${k}">${n}${c ? `<b>${c}</b>` : ""}</button>`; }).join("")}</div>`;
   h += card(F[filter][0], list.length, list.length ? taskList(list) : empty("🎉", "Здесь пусто"));
   const done = all.filter(t => t.done);
-  if (done.length) h += card("Отмечено", "уйдёт боту", taskList(done), "var(--grad-ok)");
+  if (done.length) h += card("Отмечено", done.every(t => t.pend === "s") ? "отправлено боту" : "уйдёт боту", taskList(done), "var(--grad-ok)");
   if (D.regular.length) h += card("🔁 Регулярно", "", D.regular.map(r => `<div class="ls" style="--c:var(--accent-2);grid-template-columns:24px 1fr;padding-left:14px"><div class="rail"><i style="top:14px"></i></div><div class="b" style="font-weight:700">${esc(r)}</div></div>`).join(""), "var(--accent-2)");
   if (!store.get("swipeHint", false) && list.some(t => typeof t.id === "number")) {
     h += `<div class="hint">← свайп: на завтра · свайп: сделано →</div>`;
@@ -1013,15 +1094,6 @@ function dselGo(st, to, from) {
   el.animate(grow ? [{ ...T(f.x, f.w, f.sy || 1), easing: "cubic-bezier(.5,0,.3,1)" }, { ...T(lo, hi - lo, .86), offset: .4, easing: "cubic-bezier(.3,0,.2,1)" }, { ...T(L, R - L, 1.04), offset: .78, easing: "cubic-bezier(.3,0,.4,1)" }, T(tx, W)]
     : [{ ...T(f.x, f.w, f.sy || 1), easing: "cubic-bezier(.3,0,.2,1)" }, { ...T(L, R - L, 1.04), offset: .62, easing: "cubic-bezier(.3,0,.4,1)" }, T(tx, W)],
     { duration: grow ? Math.min(760, 520 + span * .5) : 460 });
-}
-// пока день тянут пальцем, выделение тянется к соседнему дню (у края недели — чуть-чуть, как резинка)
-function dselPull(g) {
-  const st = $("cstrip"), el = st?.querySelector(".dsel"); if (!el || !MOTION) return;
-  if (!g.W) { el.getAnimations().forEach(x => x.cancel()); g.W = el.offsetWidth; }
-  const i = +st.style.getPropertyValue("--i") || 0, step = g.W + 6, n = g.dx < 0 ? 1 : -1;
-  const s = Math.min((n > 0 ? i < 6 : i > 0) ? step * .75 : 14, Math.abs(g.dx) * .5);
-  g.sx = i * step - (n < 0 ? s : 0); g.sw = g.W + s; g.sy = 1 - s / step * .12;
-  el.style.transform = `translateX(${g.sx}px) translateY(-3px) scaleY(${g.sy.toFixed(3)})`; el.style.width = g.sw + "px";
 }
 // смена дня: выделение переливается, день на ленте подпрыгивает, содержимое уезжает в сторону и въезжает новое
 function calSelect(ds, dir, drag) {
@@ -1158,53 +1230,79 @@ function ruFirst(c) {
   return [q, a];
 }
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-function startStudy(mode) {
-  const d = D.cards[deck], T0 = dayNo(), all = d.cards.map((_, i) => i);
+const unitDecks = topic => (D.cards || []).map((d, i) => [d, i]).filter(([d]) => d.archive && d.topic === topic).map(([, i]) => i);
+const cardAt = p => { const d = D.cards[p[0]]; return [d, d.cards[p[1]]]; };
+// сколько карточек в «Учить» по набору колод: к повторению + новые (не больше NEW_PER_SESSION)
+function learnCount(dis) { let due = 0, nw = 0; for (const i of dis) { const st = deckStats(D.cards[i]); due += st.due; nw += st.nw; } return due + Math.min(nw, NEW_PER_SESSION); }
+function startStudy(mode, unit = null) {
+  const dis = unit ? unitDecks(unit) : [deck], T0 = dayNo(), all = dis.flatMap(di => D.cards[di].cards.map((_, ci) => [di, ci]));
   let q;
   if (mode === "learn") {
-    const due = [], nw = [];
-    all.forEach(i => { const x = SRS.st(d, d.cards[i]); if (!x) nw.push(i); else if (x[1] <= T0) due.push([x[1], x[0], i]); });
+    const due = [], nw = dis.map(() => []);
+    for (const p of all) { const [d, c] = cardAt(p), x = SRS.st(d, c); if (!x) nw[dis.indexOf(p[0])].push(p); else if (x[1] <= T0) due.push([x[1], x[0], p]); }
     due.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    q = due.map(x => x[2]).concat(nw.slice(0, NEW_PER_SESSION));
+    const fresh = []; for (let k = 0; fresh.length < NEW_PER_SESSION && nw.some(L => L.length > k); k++) for (const L of nw) if (L[k] && fresh.length < NEW_PER_SESSION) fresh.push(L[k]);   // новые — по очереди из каждой колоды
+    q = due.map(x => x[2]).concat(fresh);
   } else if (mode === "retry") { q = shuffle(study.wrong.slice()); mode = "test"; }
   else if (mode === "test") q = shuffle(all).slice(0, 20);
   else q = shuffle(all);
   if (!q.length) { toast("Сейчас нечего повторять"); return; }
-  study = { mode, q, pos: 0, fail: new Set(), hist: [], right: 0, wrong: [], flipped: false };
+  study = { mode, q, pos: 0, fail: new Set(), hist: [], right: 0, wrong: [], flipped: false, unit };
   haptic("light"); render(); scrollTo({ top: 0 });
 }
 function answer(ok) {
-  const S = study, d = D.cards[deck], i = S.q[S.pos], c = d.cards[i], prev = SRS.st(d, c) ? [...SRS.st(d, c)] : null, T0 = dayNo();
-  S.hist.push({ pos: S.pos, i, prev, q: S.q.slice(), right: S.right, wn: S.wrong.length, failHad: S.fail.has(i) });
+  const S = study, p = S.q[S.pos], i = p.join(":"), [d, c] = cardAt(p), prev = SRS.st(d, c) ? [...SRS.st(d, c)] : null, T0 = dayNo();
+  S.hist.push({ pos: S.pos, p, prev, q: S.q.slice(), right: S.right, wn: S.wrong.length, failHad: S.fail.has(i), ok });
   if (S.mode === "learn") {
     if (ok) { const box = S.fail.has(i) ? 1 : prev ? Math.min(prev[0] + 1, 6) : 1; SRS.set(d, c, [box, T0 + IV[box], (prev?.[2] || 0) + 1, prev?.[3] || 0]); }
-    else { SRS.set(d, c, [0, T0, (prev?.[2] || 0) + 1, (prev?.[3] || 0) + (prev && prev[0] > 0 ? 1 : 0)]); S.fail.add(i); S.q.splice(Math.min(S.pos + 4, S.q.length), 0, i); }
+    else { SRS.set(d, c, [0, T0, (prev?.[2] || 0) + 1, (prev?.[3] || 0) + (prev && prev[0] > 0 ? 1 : 0)]); S.fail.add(i); S.q.splice(Math.min(S.pos + 4, S.q.length), 0, p); }
     SRS.save(d);
   } else if (S.mode === "test") {
     if (ok) { S.right++; if (!prev) SRS.set(d, c, [1, T0 + 1, 1, 0]); else if (prev[1] <= T0) { const box = Math.min(prev[0] + 1, 6); SRS.set(d, c, [box, T0 + IV[box], prev[2] + 1, prev[3]]); } }
-    else { S.wrong.push(i); SRS.set(d, c, [0, T0, (prev?.[2] || 0) + 1, (prev?.[3] || 0) + 1]); } // забытое — сразу в «Учить»
+    else { S.wrong.push(p); SRS.set(d, c, [0, T0, (prev?.[2] || 0) + 1, (prev?.[3] || 0) + 1]); } // забытое — сразу в «Учить»
     SRS.save(d);
-  } else if (!ok) S.q.splice(Math.min(S.pos + 4, S.q.length), 0, i); // «Все подряд» — без расписания
+  } else if (!ok) S.q.splice(Math.min(S.pos + 4, S.q.length), 0, p); // «Все подряд» — без расписания
   S.pos++; S.flipped = false;
-  haptic(ok ? "ok" : "light");
+  if (!S.busy) haptic(ok ? "ok" : "light");   // при свайпе и ответе кнопкой отклик уже был в момент нажатия
   if (S.pos >= S.q.length && (S.mode !== "test" || S.right >= S.wrong.length)) setTimeout(() => burst(innerWidth / 2, innerHeight / 3), 120);
-  render(false);
+  S.busy = false; render(false); cardIn("stack");
+}
+// ответ кнопкой: карточка улетает так же, как при свайпе, с отметкой «ЗНАЮ» / «ЕЩЁ РАЗ»
+function flyAnswer(ok) {
+  const S = study, el = $("flip");
+  if (!S || S.busy) return;
+  if (!el || !MOTION) { answer(ok); return; }
+  S.busy = true; haptic(ok ? "ok" : "light");
+  el.querySelector(ok ? ".stamp.k" : ".stamp.a").style.opacity = 1;
+  el.style.transition = "transform .36s cubic-bezier(.45,0,.75,.4), opacity .36s";
+  el.style.transform = `translateX(${ok ? 125 : -125}vw) rotate(${ok ? 22 : -22}deg)`;
+  setTimeout(() => { if (study === S) answer(ok); }, 230);
+}
+function cardIn(from) {
+  const el = $("flip"); if (!el || !MOTION) return;
+  el.animate(from === "stack" ? [{ transform: "translateY(14px) scale(.94)", opacity: .6 }, { transform: "none", opacity: 1 }]
+    : [{ transform: `translateX(${from * 120}vw) rotate(${from * 20}deg)` }, { transform: "none" }], { duration: from === "stack" ? 440 : 480, easing: "cubic-bezier(.2,.9,.25,1.08)" });
+  if (from !== "stack") return;
+  const [g2, g1] = document.querySelectorAll(".stack .gh");   // стопка подтягивается следом
+  g1?.animate([{ transform: "translateY(27px) scale(.88)", opacity: .35 }, { transform: "translateY(14px) scale(.94)", opacity: .65 }], { duration: 440, easing: "cubic-bezier(.2,.9,.25,1.08)" });
+  g2?.animate([{ transform: "translateY(40px) scale(.82)", opacity: 0 }, { transform: "translateY(27px) scale(.88)", opacity: .35 }], { duration: 440, easing: "cubic-bezier(.2,.9,.25,1.08)" });
 }
 function undoAnswer() {
   const S = study, h = S.hist.pop();
   if (!h) return;
-  const d = D.cards[deck];
-  if (S.mode !== "cram") { SRS.set(d, d.cards[h.i], h.prev); SRS.save(d); }
+  const [d, c] = cardAt(h.p);
+  if (S.mode !== "cram") { SRS.set(d, c, h.prev); SRS.save(d); }
   S.q = h.q; S.pos = h.pos; S.right = h.right; S.wrong.length = h.wn; S.flipped = false;
-  if (!h.failHad) S.fail.delete(h.i);
-  haptic("sel"); render(false);
+  if (!h.failHad) S.fail.delete(h.p.join(":"));
+  haptic("sel"); render(false); cardIn(h.ok ? 1 : -1);
 }
 const MODE_N = { learn: "учить", test: "проверь себя", cram: "все подряд" };
 function studyView() {
-  const S = study, d = D.cards[deck];
-  if (S.pos >= S.q.length) return studyDone(d);
-  const i = S.q[S.pos], c = d.cards[i], x = SRS.st(d, c), [q, a] = S.mode === "test" ? ruFirst(c) : c, dc = deckCol(deck);
+  const S = study;
+  if (S.pos >= S.q.length) return studyDone();
+  const p = S.q[S.pos], [d, c] = cardAt(p), x = SRS.st(d, c), [q, a] = S.mode === "test" ? ruFirst(c) : c, dc = deckCol(p[0]);
   const lab = S.mode === "test" ? ["по-русски", "по-английски"] : [S.mode === "cram" ? "карточка" : x ? (x[0] ? "повторение" : "ещё раз") : "новая", "ответ"];
+  if (S.unit) lab[0] += " · " + esc(d.name);   // в общем заходе видно, из какой колоды карточка
   const btn = S.mode === "test" ? ["Не вспомнил", "Вспомнил"] : ["Ещё раз", "Знаю"], left = S.q.length - S.pos;
   return `<div class="glass dh" style="--dc:${dc}"><button class="ar" data-sx="end" aria-label="Закончить">${IC.close}</button><div class="bar"><i style="width:${S.pos / S.q.length * 100}%"></i></div><b>${left}</b></div>
     <div class="stack"><div class="gh g2"></div><div class="gh g1"></div>
@@ -1216,22 +1314,23 @@ function studyView() {
     <div class="cardbar sub"><button class="btn ghost" data-sx="undo" ${S.hist.length ? "" : "disabled"}>${IC.undo}Назад</button><button class="btn ghost" data-sx="${S.mode === "test" && S.pos ? "finish" : "end"}">${S.mode === "test" && S.pos ? "Итог" : "Закончить"}</button></div>
     <div class="hint">свайп вправо — «${btn[1]}», влево — «${btn[0]}»</div>`;
 }
-function studyDone(d) {
-  const S = study, T0 = dayNo();
+function studyDone() {
+  const S = study, T0 = dayNo(), dis = S.unit ? unitDecks(S.unit) : [deck];
   if (S.mode === "test") {
     const n = S.right + S.wrong.length, pct = n ? S.right / n : 0, col = pct >= .8 ? "#38e6a6" : pct >= .5 ? "#ffb547" : "#ff6b6b";
     return `<section class="glass dsc res" style="--fc:${col}"><div class="dtop">${ringOf(pct, `${S.right}/${n}`, Math.round(pct * 100) + "%")}
         <div><div class="rt">${pct >= .8 ? "Отлично!" : pct >= .5 ? "Неплохо" : "Надо повторить"}</div><div class="rs">${S.wrong.length ? `Невспомненные (${S.wrong.length}) попали в «Учить» — повтори их сегодня` : "Ни одной ошибки"}</div></div></div>
-        ${S.wrong.length ? `<div class="miss">${S.wrong.map(i => { const [q, a] = ruFirst(d.cards[i]); return `<div><span>${esc(q)}</span><b>${esc(a)}</b></div>`; }).join("")}</div>` : ""}</section>
-      <div class="cardbar">${S.wrong.length ? `<button class="btn" data-study="retry">${IC.again}Ошибки · ${S.wrong.length}</button>` : `<button class="btn" data-sx="end">${IC.close}К колоде</button>`}<button class="btn pri" data-study="test">${IC.quiz}Ещё 20</button></div>
-      ${S.wrong.length ? `<div class="cardbar sub"><button class="btn ghost" data-sx="end">К колоде</button><span></span></div>` : ""}`;
+        ${S.wrong.length ? `<div class="miss">${S.wrong.map(p => { const [q, a] = ruFirst(cardAt(p)[1]); return `<div><span>${esc(q)}</span><b>${esc(a)}</b></div>`; }).join("")}</div>` : ""}</section>
+      <div class="cardbar">${S.wrong.length ? `<button class="btn" data-study="retry">${IC.again}Ошибки · ${S.wrong.length}</button>` : `<button class="btn" data-sx="end">${IC.close}${S.unit ? "Назад" : "К колоде"}</button>`}<button class="btn pri" data-study="test">${IC.quiz}Ещё 20</button></div>
+      ${S.wrong.length ? `<div class="cardbar sub"><button class="btn ghost" data-sx="end">${S.unit ? "Назад" : "К колоде"}</button><span></span></div>` : ""}`;
   }
-  const k = new Set(S.q).size;
+  const k = new Set(S.q.map(p => p.join(":"))).size;
   if (S.mode === "cram") return `<section class="glass dsc res"><div class="dtop"><div class="big">✓</div><div><div class="rt">Пройдено</div><div class="rs">${k} ${pl(k, "карточка", "карточки", "карточек")} — без влияния на расписание повторений</div></div></div></section>
-      <div class="cardbar"><button class="btn" data-sx="end">${IC.close}К колоде</button><button class="btn pri" data-study="cram">${IC.again}Ещё раз</button></div>`;
-  const st = deckStats(d), tmr = d.cards.filter(c => { const x = SRS.st(d, c); return x && x[1] === T0 + 1; }).length;
+      <div class="cardbar"><button class="btn" data-sx="end">${IC.close}${S.unit ? "Назад" : "К колоде"}</button><button class="btn pri" data-study="cram">${IC.again}Ещё раз</button></div>`;
+  const st = { nw: 0, learned: 0, total: 0 }; let tmr = 0;
+  for (const di of dis) { const d = D.cards[di], s1 = deckStats(d); st.nw += s1.nw; st.learned += s1.learned; st.total += s1.total; tmr += d.cards.filter(c => { const x = SRS.st(d, c); return x && x[1] === T0 + 1; }).length; }
   return `<section class="glass dsc res"><div class="dtop"><div class="big">🎉</div><div><div class="rt">На сегодня готово</div><div class="rs">Пройдено ${k} ${pl(k, "карточка", "карточки", "карточек")}${tmr ? ` · завтра повторим ${tmr}` : ""}${st.learned ? ` · выучено ${st.learned} из ${st.total}` : ""}</div></div></div></section>
-    <div class="cardbar">${st.nw ? `<button class="btn pri" data-study="learn">${IC.play}Ещё новые · ${Math.min(st.nw, NEW_PER_SESSION)}</button>` : `<button class="btn pri" data-study="test">${IC.quiz}Проверь себя</button>`}<button class="btn" data-sx="end">${IC.close}К колоде</button></div>`;
+    <div class="cardbar">${st.nw ? `<button class="btn pri" data-study="learn">${IC.play}Ещё новые · ${Math.min(st.nw, NEW_PER_SESSION)}</button>` : `<button class="btn pri" data-study="test">${IC.quiz}Проверь себя</button>`}<button class="btn" data-sx="end">${IC.close}${S.unit ? "Назад" : "К колоде"}</button></div>`;
 }
 
 // ---------- папки предметов (архив): общие для «Файлов» и «Карточек» ----------
@@ -1251,20 +1350,26 @@ function folderTiles(items, fk) {
   }).join("")}</div>`;
 }
 function folderBar(x, items, fk) {
-  const nt = topicsOf(items).length;
-  return `<div class="glass wk"><button class="ar" data-fold="" data-fk="${fk}">${IC.prev}</button><b>${IC.folder}${esc(x?.subject_name || "Папка")}<small>${nt} ${unitWord(x?.subject || "", nt)}</small></b><span style="width:40px"></span></div>`;
+  const nt = topicsOf(items).length, n = items.length;
+  const what = fk === "c" ? `${n} ${pl(n, "колода", "колоды", "колод")}` : `${n} ${pl(n, "файл", "файла", "файлов")}`;
+  return `<div class="glass wk"><button class="ar" data-fold="" data-fk="${fk}" aria-label="Назад">${IC.prev}</button><b>${IC.folder}${nt} ${unitWord(x?.subject || "", nt)} · ${what}</b><span style="width:40px"></span></div>`;
 }
 
 function vCards() {
   const decks = D.cards || [];
   if (!decks.length) return `<section class="glass card">${empty("🃏", "Колод пока нет.<br><br>Напиши боту «сделай карточки по #1» — он соберёт колоду из материалов задачи.")}</section>`;
+  if (study && (study.unit || decks[deck])) return studyView();
   if (deck === null || !decks[deck]) {
     deck = null; study = null;
     const idx = decks.map((d, i) => [d, i]), reg = idx.filter(([d]) => !d.archive), arc = idx.filter(([d]) => d.archive);
     if (cfold) {
       const A = arc.filter(([d]) => d.subject === cfold);
-      return folderBar(A[0]?.[0], A.map(([d]) => d), "c") + topicsOf(A.map(([d]) => d)).map(t => `<div class="ah"><span class="chip">${IC.book}${esc(t.name)}</span></div>
-        <div class="decks">${A.filter(([d]) => d.topic === t.id).map(([d, i]) => deckTile(d, i)).join("")}</div>`).join("");
+      return folderBar(A[0]?.[0], A.map(([d]) => d), "c") + topicsOf(A.map(([d]) => d)).map(t => {
+        const T = A.filter(([d]) => d.topic === t.id), n = learnCount(T.map(([, i]) => i));
+        return `<div class="ah"><span class="chip">${IC.book}${esc(t.name)}</span></div>
+        ${T.length > 1 ? `<button class="btn pri unitgo" data-study="learn" data-unit="${esc(t.id)}" ${n ? "" : "disabled"}>${IC.play}${n ? `Учить все колоды · ${n}` : "Все колоды повторены"}</button>` : ""}
+        <div class="decks">${T.map(([d, i]) => deckTile(d, i)).join("")}</div>`;
+      }).join("");
     }
     return (reg.length ? `<div class="decks">${reg.map(([d, i]) => deckTile(d, i)).join("")}</div>` : "") + folderTiles(arc.map(([d]) => d), "c");
   }
@@ -1274,11 +1379,12 @@ function vCards() {
 const FT = { pdf: ["PDF", "#ff5d6c"], doc: ["DOC", "#4b8bff"], docx: ["DOC", "#4b8bff"], ppt: ["PPT", "#ff8a3d"], pptx: ["PPT", "#ff8a3d"], xls: ["XLS", "#2fbf71"], xlsx: ["XLS", "#2fbf71"], txt: ["TXT", "#8a8fab"], zip: ["ZIP", "#c08b4a"] };
 const extOf = x => ((/\.(\w{2,5})$/.exec(x.name) || /\.(\w{2,5})$/.exec(x.path || "") || [])[1] || "").toLowerCase();
 const ftype = x => x.kind === "photo" ? ["IMG", "#b45cff"] : FT[extOf(x)] || ["FILE", "#7c6cff"];
+const dispName = x => String(x.name || "").replace(/\.\w{2,5}$/, "").replace(/_/g, " ").trim() || x.name;
 function vFiles() {
   const f = D.files || [], cur = f.filter(x => !x.archive && !x.dup), arc = f.filter(x => x.archive); // копии задач, уже лежащие в архиве, не повторяем
   if (!f.length) return `<section class="glass card">${empty("📎", "Файлов пока нет — они появятся, когда к задачам прикрепят материалы")}</section>`;
   const tile = x => { const [n, c] = ftype(x); return `<div class="glass file"><div class="ty" style="--fc:${c}">${n}</div>
-    <div class="fn">${esc(x.name)}</div>${x.archive ? "" : `<div class="ft">#${x.task} · ${esc(x.task_text.slice(0, 44))}</div>`}
+    <div class="fn">${esc(dispName(x))}</div>${x.archive ? "" : `<div class="ft">#${x.task} · ${esc(x.task_text.slice(0, 44))}</div>`}
     <div class="fbtns">${x.enc ? (viewable(x) ? `<button class="btn pri" data-fview="${esc(x.path)}">${IC.eye}Открыть</button>` : `<button class="btn pri" data-fdl="${esc(x.path)}">${IC.down}Сохранить</button>`) : ""}
       <button class="btn ${x.enc ? "sq" : ""}" data-file="${esc(x.path)}" data-task="${x.task || ""}" ${x.path ? "" : "disabled"} aria-label="Прислать в чат">${IC.send}${x.enc ? "" : "В чат"}</button></div></div>`; };
   if (ffold) {
@@ -1307,16 +1413,6 @@ async function fileBlob(f, slot = f.enc) {
   const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, KEY, buf.slice(12));
   return (blobs[ck] = new Blob([plain], { type: slot === f.view ? "application/pdf" : MIME[extOf(f)] || (f.kind === "photo" ? "image/jpeg" : "application/octet-stream") }));
 }
-function loading(on) { $("viewer").classList.toggle("busy", on); }
-async function viewFile(f) {
-  const v = $("viewer"); v.dataset.path = f.path; $("vbody").innerHTML = ""; v.classList.add("on"); loading(true); haptic("light");
-  try {
-    const b = await fileBlob(f, f.view || f.enc);
-    if (b.type === "application/pdf") await renderPdf(b);
-    else $("vbody").innerHTML = `<img src="${URL.createObjectURL(b)}" alt="">`;
-  } catch (e) { $("vbody").innerHTML = `<div class="msg"><b>😕</b>Не удалось открыть — нажми 📩, бот пришлёт файл в чат</div>`; }
-  loading(false);
-}
 // PDF рисуем сами (pdf.js): встроенного просмотрщика PDF в Telegram на телефоне нет
 let pdfjs = null;
 function loadPdfJs() {
@@ -1329,18 +1425,6 @@ function loadPdfJs() {
     document.head.appendChild(sc);
   });
 }
-async function renderPdf(b) {
-  const lib = await loadPdfJs(), doc = await lib.getDocument({ data: new Uint8Array(await b.arrayBuffer()) }).promise;
-  const box = $("vbody"), w = Math.min(box.clientWidth || innerWidth, 900), dpr = Math.min(devicePixelRatio || 1, 2);
-  box.innerHTML = `<div class="pdf"></div>`;
-  for (let i = 1; i <= Math.min(doc.numPages, 60); i++) {
-    const pg = await doc.getPage(i), vp0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: w / vp0.width * dpr });
-    const c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height; c.style.width = w + "px";
-    box.firstChild.appendChild(c);
-    await pg.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
-    if (i === 1) loading(false);
-  }
-}
 // сохранить: на iPhone — системное меню «Поделиться» (сохранить в Файлы/Фото, переслать), иначе — обычное скачивание
 async function dlFile(f) {
   haptic("light");
@@ -1351,6 +1435,228 @@ async function dlFile(f) {
     toast("⬇️ Если файл не сохранился — нажми 📩, бот пришлёт его в чат");
   } catch (e) { if (e && e.name !== "AbortError") toast("Не получилось — нажми 📩, бот пришлёт в чат"); }
 }
+
+// ---------- просмотр файла: щипок и двойной тап — зум, свайп вниз — закрыть, у PDF — номер страницы ----------
+// Видимое положение содержимого: точка (u, v) в координатах файла (при зуме 1) стоит на экране в (A.x + u·z, A.y + v·z).
+// Во время щипка меняем только transform (быстро), в конце — раскладку и прокрутку под новый зум, без скачка.
+let V = null;
+const ZMAX = 4;
+const viewerOn = () => $("viewer").classList.contains("on");
+const sheetOn = () => $("sheet").classList.contains("on");
+function syncVSwipes() { try { viewerOn() || sheetOn() ? tg?.disableVerticalSwipes?.() : tg?.enableVerticalSwipes?.(); } catch (e) {} }
+function loading(on) { $("viewer").classList.toggle("busy", on); }
+function vLayout(z) {
+  const vb = $("vbody"), vz = $("vz"); if (!V || !vz) return;
+  const W = vb.clientWidth, H = vb.clientHeight, pad = 12;
+  vz.style.setProperty("--z", z);
+  if (V.kind === "img") {
+    const w = V.fw * z, h = V.fh * z, cw = Math.max(W, w + pad * 2), ch = Math.max(H, h + pad * 2);
+    vz.style.width = cw + "px"; vz.style.height = ch + "px";
+    V.ox = (cw - w) / 2; V.oy = (ch - h) / 2;
+    Object.assign(V.img.style, { width: w + "px", height: h + "px", left: V.ox + "px", top: V.oy + "px" });
+  } else {
+    const colW = V.bw * z, cw = Math.max(W, colW + pad * 2);
+    vz.style.width = cw + "px";
+    V.ox = (cw - colW) / 2; V.oy = 4;
+    V.col.style.marginLeft = V.ox + "px";
+    for (const c of V.canv) { c.style.width = c._bw * z + "px"; c.style.height = c._bh * z + "px"; }
+  }
+  V.z = z;
+}
+const vVisual = () => { const vb = $("vbody"); return { ax: V.ox - vb.scrollLeft, ay: V.oy - vb.scrollTop, z: V.z }; };
+// новый зум z: точка файла, что была в A, остаётся там же, если позволяет прокрутка; from — с какого вида плавно перейти
+function vSet(z, ax, ay, from, dur = 280) {
+  const vb = $("vbody"), vz = $("vz");
+  vLayout(z);
+  vb.scrollLeft = V.ox - ax; vb.scrollTop = V.oy - ay;
+  vz.style.transition = "none"; vz.style.transformOrigin = "0 0";
+  if (from && MOTION) {
+    const k = from.z / z, tx = from.ax + vb.scrollLeft - k * V.ox, ty = from.ay + vb.scrollTop - k * V.oy;
+    vz.style.transform = `translate(${tx}px, ${ty}px) scale(${k})`;
+    vz.getBoundingClientRect();
+    vz.style.transition = `transform ${dur}ms cubic-bezier(.2,.8,.2,1)`;
+  }
+  vz.style.transform = "";
+  vPage(); if (V.kind === "pdf") vSharpen();
+}
+// PDF: страницы рисуются в обычном качестве, а при зуме видимые перерисовываются чётче (дальние — обратно, чтобы не тратить память)
+async function vRender(c, s) {
+  if (!V || V.kind !== "pdf") return;
+  const dpr = Math.min(devicePixelRatio || 1, 2), vp = c._page.getViewport({ scale: V.bw / c._vw * dpr * s });
+  if (vp.width * vp.height > 16e6) return;
+  const n = document.createElement("canvas"); n.width = Math.round(vp.width); n.height = Math.round(vp.height);
+  Object.assign(n, { _page: c._page, _vw: c._vw, _bw: c._bw, _bh: c._bh, _s: s }); n.style.cssText = c.style.cssText;
+  c._want = s;
+  try { await c._page.render({ canvasContext: n.getContext("2d"), viewport: vp }).promise; } catch (e) { return; }
+  if (!V || c._want !== s || !c.isConnected) return;
+  c.replaceWith(n); V.canv[V.canv.indexOf(c)] = n;
+}
+function vSharpen() {
+  clearTimeout(vSharpen.t);
+  vSharpen.t = setTimeout(() => {
+    if (!V || V.kind !== "pdf") return;
+    const vb = $("vbody"), top = vb.scrollTop - 300, bot = vb.scrollTop + vb.clientHeight + 300, want = V.z > 1.15 ? Math.min(V.z, 3) : 1;
+    for (const c of V.canv.slice()) {
+      const vis = c.offsetTop + c.offsetHeight > top && c.offsetTop < bot, s = vis ? want : 1;
+      if (c._s && Math.abs(c._s - s) > .15 && c._want !== s) vRender(c, s);
+    }
+  }, 220);
+}
+function vPage() {
+  if (!V || V.kind !== "pdf" || !V.canv.length) { $("vpage").textContent = ""; return; }
+  const vb = $("vbody"), mid = vb.scrollTop + vb.clientHeight * .35;
+  let i = 0; V.canv.forEach((c, k) => { if (c.offsetTop <= mid) i = k; });
+  V.page = i; $("vpage").textContent = `${i + 1} / ${V.canv.length}`;
+  clearTimeout(vPage.t); vPage.t = setTimeout(() => { if (V) store.set("lastView", { ...store.get("lastView", {}), page: i, at: Date.now() }); }, 400);
+}
+async function viewFile(f, opt = {}) {
+  const v = $("viewer"), vb = $("vbody");
+  if (V?.doc) try { V.doc.destroy(); } catch (e) {}
+  V = { f, kind: "img", z: 1, ox: 0, oy: 0, canv: [] };
+  v.dataset.path = f.path; vb.innerHTML = ""; vb.style.transform = ""; v.style.removeProperty("--vo");
+  $("vtitle").textContent = dispName(f); $("vpage").textContent = "";
+  v.classList.add("on"); loading(true); haptic("light"); syncBack(); syncVSwipes();
+  // если закрыть mini с открытым файлом — в следующий раз (в течение получаса) откроется он же, на той же странице
+  store.set("lastView", { path: f.path, tab, ffold, page: opt.page || 0, at: Date.now() });
+  const me = V;
+  try {
+    const b = await fileBlob(f, f.view || f.enc);
+    if (V !== me) return;
+    if (b.type === "application/pdf") await openPdf(b, opt.page || 0, me);
+    else await openImg(b, me);
+  } catch (e) { if (V === me) vb.innerHTML = `<div class="msg"><b>😕</b>Не удалось открыть — нажми 📩, бот пришлёт файл в чат</div>`; }
+  if (V === me) loading(false);
+}
+async function openImg(b, me) {
+  const vb = $("vbody"), img = new Image();
+  img.src = URL.createObjectURL(b); img.alt = "";
+  await img.decode().catch(() => {});
+  if (V !== me) return;
+  const nw = img.naturalWidth || 1, nh = img.naturalHeight || 1, s = Math.min((vb.clientWidth - 24) / nw, (vb.clientHeight - 24) / nh, 2);
+  Object.assign(V, { kind: "img", img, fw: nw * s, fh: nh * s });
+  vb.innerHTML = `<div id="vz" class="vz"></div>`; $("vz").appendChild(img);
+  vLayout(1); vb.scrollTo(0, 0);
+}
+async function openPdf(b, page, me) {
+  const lib = await loadPdfJs(), doc = await lib.getDocument({ data: new Uint8Array(await b.arrayBuffer()) }).promise;
+  if (V !== me) { doc.destroy(); return; }
+  const vb = $("vbody"), n = Math.min(doc.numPages, 60);
+  Object.assign(V, { kind: "pdf", doc, bw: Math.min(vb.clientWidth - 24, 900) });
+  vb.innerHTML = `<div id="vz" class="vz"><div class="col"></div></div>`;
+  V.col = $("vz").firstChild;
+  for (let i = 1; i <= n; i++) {   // сначала размеры всех страниц — чтобы листалось без прыжков, пока они рисуются
+    const pg = await doc.getPage(i), vp0 = pg.getViewport({ scale: 1 });
+    if (V !== me) return;
+    const c = document.createElement("canvas");
+    Object.assign(c, { _page: pg, _vw: vp0.width, _bw: V.bw, _bh: V.bw * vp0.height / vp0.width });
+    V.col.appendChild(c); V.canv.push(c);
+  }
+  vLayout(1);
+  const p0 = Math.min(page, n - 1);
+  if (p0) vb.scrollTop = V.canv[p0].offsetTop - 8;
+  vPage();
+  const order = V.canv.map((c, k) => [Math.abs(k - p0) + (k < p0 ? .5 : 0), k]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  for (const k of order) {   // рисуем от открытой страницы к дальним
+    if (V !== me) return;
+    const c = V.canv[k], dpr = Math.min(devicePixelRatio || 1, 2), vp = c._page.getViewport({ scale: V.bw / c._vw * dpr });
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height); c._s = 1;
+    try { await c._page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise; } catch (e) {}
+    if (k === p0) loading(false);
+  }
+}
+function closeViewer(anim) {
+  const v = $("viewer"); if (!v.classList.contains("on")) return;
+  try { localStorage.removeItem("lastView"); } catch (e) {}
+  const done = () => {
+    v.classList.remove("on"); syncBack(); syncVSwipes();
+    setTimeout(() => { if (viewerOn()) return; $("vbody").innerHTML = ""; $("vbody").style.transform = ""; v.style.removeProperty("--vo"); if (V?.doc) try { V.doc.destroy(); } catch (e) {} V = null; }, 320);
+  };
+  if (anim && MOTION) { const vb = $("vbody"); vb.style.transition = "transform .28s cubic-bezier(.4,0,1,1)"; vb.style.transform = `translateY(${innerHeight * .7}px)`; v.style.setProperty("--vo", 0); setTimeout(done, 200); }
+  else done();
+}
+// жесты в просмотре: два пальца — зум, двойной тап — приблизить/отдалить, вниз (когда не приближено и мы в начале) — закрыть
+(() => {
+  const vb = document.getElementById("vbody");   // $ объявлен ниже
+  let P = null, C = null, tap = null, last = null;
+  const mid = t => ({ x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const rel = p => { const r = vb.getBoundingClientRect(); return { x: p.x - r.left, y: p.y - r.top }; };
+  vb.addEventListener("touchstart", e => {
+    if (!V || !$("vz")) return;
+    if (e.touches.length === 2) {
+      C = null; tap = null;
+      const m = rel(mid(e.touches)), A = vVisual();
+      P = { m0: m, d0: dist(e.touches) || 1, A0: A, last: { ax: A.ax, ay: A.ay, z: A.z }, m };
+      $("vz").style.transition = "none";
+    } else if (e.touches.length === 1 && !P) {
+      const t = e.touches[0];
+      tap = { x: t.clientX, y: t.clientY, t: Date.now(), moved: false };
+      C = V.z <= 1.01 && vb.scrollTop <= 0 ? { y0: t.clientY, x0: t.clientX, on: false, t0: Date.now(), dy: 0 } : null;
+    }
+  }, { passive: true });
+  vb.addEventListener("touchmove", e => {
+    if (!V) return;
+    if (P && e.touches.length === 2) {
+      e.preventDefault();
+      const m = rel(mid(e.touches)); let f = dist(e.touches) / P.d0, z = P.A0.z * f;
+      if (z > ZMAX) z = ZMAX * Math.pow(z / ZMAX, .35); else if (z < 1) z = Math.pow(z, .5);   // за пределами — тугая резинка
+      f = z / P.A0.z;
+      const ax = m.x - (P.m0.x - P.A0.ax) * f, ay = m.y - (P.m0.y - P.A0.ay) * f, k = z / V.z;
+      $("vz").style.transform = `translate(${ax + vb.scrollLeft - k * V.ox}px, ${ay + vb.scrollTop - k * V.oy}px) scale(${k})`;
+      P.last = { ax, ay, z }; P.m = m;
+      return;
+    }
+    const t = e.touches[0];
+    if (tap && Math.hypot(t.clientX - tap.x, t.clientY - tap.y) > 10) tap.moved = true;
+    if (C) {
+      const dy = t.clientY - C.y0, dx = t.clientX - C.x0;
+      if (!C.on && dy > 10 && dy > Math.abs(dx) * 1.2 && vb.scrollTop <= 0) C.on = true;
+      else if (!C.on && (dy < -6 || Math.abs(dx) > 14)) C = null;
+      if (C?.on) {
+        e.preventDefault(); C.dy = Math.max(0, dy);
+        vb.style.transition = "none"; vb.style.transform = `translateY(${C.dy}px) scale(${1 - Math.min(C.dy, 400) / 2400})`;
+        $("viewer").style.setProperty("--vo", Math.max(.25, 1 - C.dy / 420).toFixed(3));
+      }
+    }
+  }, { passive: false });
+  const end = e => {
+    if (!V) return;
+    if (P && e.touches.length < 2) {   // щипок закончился: закрепляем зум (в пределах 1…4) раскладкой
+      const L = P.last, z = Math.min(ZMAX, Math.max(1, L.z)), f = z / L.z;
+      const ax = P.m.x - (P.m.x - L.ax) * f, ay = P.m.y - (P.m.y - L.ay) * f;
+      P = null; tap = null;
+      vSet(z, ax, ay, L, 240);
+      return;
+    }
+    if (C?.on) {
+      const fast = C.dy / Math.max(1, Date.now() - C.t0) > .7;
+      if (C.dy > 110 || (fast && C.dy > 40)) { haptic("light"); closeViewer(true); }
+      else { vb.style.transition = "transform .35s cubic-bezier(.34,1.4,.64,1)"; vb.style.transform = ""; $("viewer").style.removeProperty("--vo"); }
+      C = null; tap = null; return;
+    }
+    C = null;
+    if (tap && !tap.moved && Date.now() - tap.t < 300 && e.touches.length === 0) {
+      const now = Date.now(), p = { x: tap.x, y: tap.y };
+      if (last && now - last.t < 320 && Math.hypot(p.x - last.x, p.y - last.y) < 36) {   // двойной тап
+        last = null;
+        const m = rel(p), A = vVisual(), z = V.z > 1.05 ? 1 : 2.5, f = z / A.z;
+        haptic("light");
+        vSet(z, m.x - (m.x - A.ax) * f, m.y - (m.y - A.ay) * f, A, 300);
+        e.preventDefault();
+      } else last = { ...p, t: now };
+    }
+    tap = null;
+  };
+  vb.addEventListener("touchend", end, { passive: false });
+  vb.addEventListener("touchcancel", end, { passive: false });
+  vb.addEventListener("scroll", () => { if (V) { vPage(); if (V.kind === "pdf" && V.z > 1.15) vSharpen(); } }, { passive: true });
+  addEventListener("resize", () => {
+    if (!V || !$("vz")) return;
+    if (V.kind === "img") { const nw = V.img.naturalWidth || 1, nh = V.img.naturalHeight || 1, s = Math.min((vb.clientWidth - 24) / nw, (vb.clientHeight - 24) / nh, 2); V.fw = nw * s; V.fh = nh * s; }
+    else { const bw = Math.min(vb.clientWidth - 24, 900); for (const c of V.canv) { c._bh = c._bh * bw / c._bw; c._bw = bw; } V.bw = bw; }
+    vLayout(V.z);
+  });
+})();
 
 // ---------- шапка ----------
 const sgn = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) + "°";
@@ -1386,7 +1692,8 @@ function hud() {
   const H = {
     cal: ["пары, дедлайны, дни рождения", "Календарь"],
     tasks: [act + " " + pl(act, "активная", "активные", "активных"), "Задачи"],
-    cards: [deck !== null ? (study ? MODE_N[study.mode] : D.cards[deck].topic_name ? esc(D.cards[deck].subject_name + " · " + D.cards[deck].topic_name) : "колода") : cfold ? "папка" : "колоды для зубрёжки",
+    cards: study?.unit && D ? (u => [MODE_N[study.mode] + " · все колоды", esc(u ? u.topic_name : "Юнит")])(D.cards.find(d => d.topic === study.unit))
+      : [deck !== null ? (study ? MODE_N[study.mode] : D.cards[deck].topic_name ? esc(D.cards[deck].subject_name + " · " + D.cards[deck].topic_name) : "колода") : cfold ? "папка" : "колоды для зубрёжки",
       deck !== null && D ? esc(D.cards[deck].name) : cfold && D ? esc((D.cards.find(d => d.subject === cfold) || {}).subject_name || "Папка") : "Карточки"],
     files: [ffold ? "папка" : "материалы к задачам и архив", ffold && D ? esc((D.files.find(f => f.subject === ffold) || {}).subject_name || "Папка") : "Файлы"],
   }[tab];
@@ -1558,7 +1865,8 @@ function applySky() {
 // частицы на холсте: капли, снег, облака, туман, звёзды
 const sky = (() => {
   const cv = document.getElementById("sky"), cx = cv.getContext("2d"), still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let kind = "none", night = false, dark = true, wind = 0, P = [], C = [], w = 0, h = 0, raf = 0, last = 0, nextFlash = 0;
+  let kind = "none", night = false, dark = true, wind = 0, P = [], C = [], w = 0, h = 0, raf = 0, last = 0, nextFlash = 0, holdTill = 0;
+  const viewerEl = document.getElementById("viewer"), sheetEl = document.getElementById("sheet");
   const rnd = (a, b) => a + Math.random() * (b - a);
   function size() { const r = Math.min(devicePixelRatio || 1, 2); w = innerWidth; h = innerHeight; cv.width = w * r; cv.height = h * r; cx.setTransform(r, 0, 0, r, 0, 0); }
   function seed(precip) {
@@ -1571,7 +1879,13 @@ const sky = (() => {
       puffs: [[0, 0, .75], [-.55, .12, .55], [.55, .1, .6], [-.2, -.3, .5], [.25, -.25, .55], [.9, .2, .4], [-.9, .22, .4]] });
   }
   function frame(t) {
-    const dt = Math.min(50, t - (last || t)) / 16.7; last = t;
+    if (document.hidden) { raf = 0; return; }
+    // экономим батарею и плавность: облака и звёзды — ~20 кадров в секунду (за кадр они сдвигаются меньше чем на пиксель), дождь и снег — ~30;
+    // пока открыт файл или шторка — небо стоит; облака стоят и пока листаешь
+    const precip = kind === "rain" || kind === "storm" || kind === "drizzle" || kind === "snow";
+    const paused = viewerEl.classList.contains("on") || sheetEl.classList.contains("on") || (!precip && Date.now() < holdTill);
+    if (paused || (last && t - last < (precip ? 31 : 48))) { if (paused) last = t; raf = requestAnimationFrame(frame); return; }
+    const dt = Math.min(80, t - (last || t)) / 16.7; last = t;
     const light = document.documentElement.classList.contains("light");
     cx.clearRect(0, 0, w, h);
     for (const c of C) {
@@ -1617,7 +1931,7 @@ const sky = (() => {
   function start() { cancelAnimationFrame(raf); last = 0; raf = requestAnimationFrame(frame); }
   addEventListener("resize", () => { size(); seed(0); start(); applyScene(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) start(); });
-  return { tone(d) { dark = d; }, set(k, precip, wd, nt) { if (k === kind && nt === night) return; kind = k; night = nt; wind = wd || 0; size(); seed(precip || 0); start(); } };
+  return { hold(ms) { holdTill = Date.now() + ms; }, tone(d) { dark = d; }, set(k, precip, wd, nt) { if (k === kind && nt === night) return; kind = k; night = nt; wind = wd || 0; size(); seed(precip || 0); start(); } };
 })();
 
 async function refreshWeather() {
@@ -1627,7 +1941,7 @@ async function refreshWeather() {
 // фоновая перерисовка (погода, минутный тик) не обрывает анимацию календаря и не дёргает свайп или прокрутку — ждёт, пока всё затихнет
 let busyTill = 0;
 const uiBusy = ms => { busyTill = Math.max(busyTill, Date.now() + ms); };
-document.addEventListener("scroll", () => uiBusy(450), { capture: true, passive: true });
+document.addEventListener("scroll", () => { uiBusy(450); sky.hold(300); }, { capture: true, passive: true });
 function quietRender(ok) {
   clearTimeout(quietRender.t);
   if (Date.now() < busyTill) { quietRender.t = setTimeout(() => quietRender(ok), busyTill - Date.now() + 60); return; }
@@ -1636,8 +1950,8 @@ function quietRender(ok) {
 
 // ---------- шторки ----------
 const $ = id => document.getElementById(id);
-function sheet(html) { $("sheet").innerHTML = '<div class="grab"></div>' + html; $("sheet").style.transform = ""; $("scrim").classList.add("on"); $("sheet").classList.add("on"); try { tg?.disableVerticalSwipes?.(); } catch (e) {} }
-function closeSheet() { $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); $("sheet").style.transform = ""; try { tg?.enableVerticalSwipes?.(); } catch (e) {} }
+function sheet(html) { $("sheet").innerHTML = '<div class="grab"></div>' + html; $("sheet").style.transform = ""; $("scrim").classList.add("on"); $("sheet").classList.add("on"); syncVSwipes(); syncBack(); }
+function closeSheet() { $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); $("sheet").style.transform = ""; syncVSwipes(); syncBack(); }
 function quickDates() {
   const t = P(today()), o = [["Сегодня", 0], ["Завтра", 1], ["Послезавтра", 2]];
   const nextMon = (8 - t.getDay()) % 7 || 7; o.push(["Пн", nextMon], ["+ неделя", 7]);
@@ -1680,18 +1994,19 @@ function renderHud(animate) {
   $("topbar").textContent = tab === "today" ? hhmm(nowMin()) + " · " + (wxKind() ? wxIcon(wxKind()) + (W ? " " + sgn(Math.round(W.temp)) : "") : "Сегодня") : (TABS.find(x => x[0] === tab) || [])[1];
 }
 function render(animate = true) {
+  if (animate) uiBusy(900);   // фоновые обновления подождут, пока экран въедет
   renderNav(); renderHud(animate);
   const V = { today: vToday, cal: vCal, tasks: vTasks, cards: vCards, files: vFiles }[tab] || vToday;
   const i = TABS.findIndex(x => x[0] === tab), j = TABS.findIndex(x => x[0] === prevTab);
   const main = $("main");
   main.className = animate ? "anim" + (prevTab && prevTab !== tab ? (i > j ? " slide-r" : " slide-l") : "") : "";
   const sx = !animate && main.querySelector(".tkts")?.scrollLeft;
-  main.innerHTML = V() + `<div class="foot"><span>обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
+  main.innerHTML = V() + `<div class="foot"><span>${offline ? "нет сети · " : ""}обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
   prevTab = tab;
   if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); if (sx) { const k = main.querySelector(".tkts"); if (k) k.scrollLeft = sx; } }
   if (tab === "cal" && animate) calIntro();
   $("fab").style.display = tab === "tasks" || tab === "today" || tab === "cal" ? "grid" : "none";
-  if (tg?.BackButton) ((tab === "cards" && (study || deck !== null || cfold)) || (tab === "files" && ffold)) ? tg.BackButton.show() : tg.BackButton.hide();
+  syncBack();
   renderQueue();
 }
 function renderQueue() {
@@ -1712,12 +2027,15 @@ function sendOps() {
   const payload = JSON.stringify({ v: 1, ops });
   if (!tg || !tg.platform || tg.platform === "unknown") { toast("Открой планер в Telegram кнопкой «📅 Планер»"); return; }
   if (payload.length > 4000) { tg.showAlert("Слишком много изменений сразу — отправь часть, потом остальное."); return; }
-  const keep = ops.slice();
+  const keep = ops.slice(), now = Date.now();
+  const rec = keep.filter(o => o.op !== "send_file").map(o => ({ ...o, at: now, ...(o.op === "tmr" ? { from: D?.tasks.find(t => t.id === o.id)?.date } : {}) }));
+  sent = sent.concat(rec); store.set("sent", sent);
   ops = []; store.set("ops", []); haptic("ok");
   try { tg.sendData(payload); } catch (e) {}
   // приняли — планер сейчас закроется и этот таймер не сработает
   setTimeout(() => {
     if (ops.length) return;
+    sent = sent.filter(x => !rec.includes(x)); store.set("sent", sent);
     ops = keep; store.set("ops", ops); render(false); haptic("error");
     const m = "Из меню Telegram не даёт отправлять данные боту. Изменения сохранены: закрой планер, открой его кнопкой «📅 Планер» на клавиатуре под полем ввода и нажми «Отправить боту».";
     tg.showPopup ? tg.showPopup({ title: "Открой с клавиатуры", message: m, buttons: [{ type: "ok" }] }) : tg.showAlert(m);
@@ -1744,12 +2062,23 @@ function markDone(id, from) {
 
 // ---------- жесты: свайп задач, карточек и шторки ----------
 let G = null, noClick = 0;
+// свайп между вкладками (удобно одной рукой): влево — следующая, вправо — предыдущая. Свои жесты не трогаем: карусели и ленты
+// листаются вбок, строки задач свайпаются, карточки для зубрёжки — тоже. В «Календаре» свайп по полосе дней листает недели,
+// а по нижнему меню можно вести пальцем — выделение едет следом.
+const SWIPE_SKIP = ".fpages, .dpages, .tkts, .seg, .hrs, .tk[data-sw], #flip, #cstrip, input, textarea, select";
 document.addEventListener("pointerdown", e => {
   if (e.button > 0) return;
-  const tk = e.target.closest(".tk[data-sw]"), fl = e.target.closest("#flip"), gr = e.target.closest(".sheet .grab"), cb = !tk && !fl && !gr && e.target.closest("#calbody");
-  const el = tk || fl || gr || cb;
-  if (!el || (tk && e.target.closest("button"))) return;
-  G = { el, k: tk ? "task" : fl ? "card" : gr ? "sheet" : "cal", x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, arm: false };
+  const tk = e.target.closest(".tk[data-sw]"), fl = e.target.closest("#flip"), gr = e.target.closest(".sheet .grab");
+  if (tk || fl || gr) {
+    if (tk && e.target.closest("button")) return;
+    G = { el: tk || fl || gr, k: tk ? "task" : fl ? "card" : "sheet", x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, arm: false };
+    return;
+  }
+  if (e.pointerType === "mouse" || !D || viewerOn() || sheetOn()) return;
+  const wk = e.target.closest("#cstrip"), dk = e.target.closest("#nav"), tb = !wk && !dk && !study && !e.target.closest(SWIPE_SKIP);
+  if (!wk && !dk && !tb) return;
+  const i0 = TABS.findIndex(x => x[0] === tab);
+  G = { el: wk || (dk ? $("nav") : document.querySelector(".wrap")), k: wk ? "week" : dk ? "dock" : "tab", x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, lock: null, id: e.pointerId, arm: false, i0, t0: e.timeStamp };
 });
 document.addEventListener("pointermove", e => {
   if (!G || e.pointerId !== G.id) return;
@@ -1763,7 +2092,8 @@ document.addEventListener("pointermove", e => {
     try { G.el.setPointerCapture(G.id); } catch (_) {}
   }
   if (G.lock === "no") return;
-  const arm = G.k === "sheet" ? G.dy > 110 : G.k === "cal" ? Math.abs(G.dx) > 70 : Math.abs(G.dx) > 96;
+  const edge = G.k === "tab" && ((G.dx > 0 && G.i0 === 0) || (G.dx < 0 && G.i0 === TABS.length - 1));
+  const arm = G.k === "sheet" ? G.dy > 110 : G.k === "tab" ? !edge && Math.abs(G.dx) > 70 : G.k === "week" ? Math.abs(G.dx) > 50 : G.k === "dock" ? false : Math.abs(G.dx) > 96;
   if (arm !== G.arm) { G.arm = arm; if (arm) haptic("light"); }
   if (G.k === "task") {
     const row = G.el.parentElement, dx = G.dx;
@@ -1771,11 +2101,15 @@ document.addEventListener("pointermove", e => {
     row.querySelector(".rev.l").style.width = Math.max(0, dx - 10) + "px";
     row.querySelector(".rev.r").style.width = Math.max(0, -dx - 10) + "px";
     row.classList.toggle("arm", arm);
-  } else if (G.k === "cal") {
-    G.el.style.transform = `translateX(${(G.dx * .55).toFixed(1)}px)`;
-    const fade = (1 - Math.min(.55, Math.abs(G.dx) / 320)).toFixed(3);
-    for (const c of G.el.children) c.style.opacity = fade;
-    dselPull(G);
+  } else if (G.k === "tab") {   // экран тянется за пальцем (у крайних вкладок — туго), выделение в меню едет к соседней
+    G.el.style.transform = `translateX(${(G.dx * (edge ? .12 : .32)).toFixed(1)}px)`;
+    const nav = $("nav"); nav.classList.add("drag"); nav.style.setProperty("--i", Math.max(0, Math.min(TABS.length - 1, G.i0 - G.dx / innerWidth * .9)).toFixed(3));
+  } else if (G.k === "week") {
+    G.el.style.transform = `translateX(${(G.dx * .45).toFixed(1)}px)`;
+  } else if (G.k === "dock") {   // ~45 px на вкладку: до дальней вкладки — короткое движение большого пальца
+    const i = Math.max(0, Math.min(TABS.length - 1, G.i0 + G.dx / 45)), k = Math.round(i);
+    G.el.classList.add("drag"); G.el.style.setProperty("--i", i.toFixed(3));
+    if (k !== (G.kk ?? G.i0)) { G.kk = k; haptic("sel"); }
   } else if (G.k === "card") {
     G.el.style.transform = `translateX(${G.dx}px) rotate(${G.dx / 16}deg)`;
     G.el.querySelector(".stamp.k").style.opacity = clamp(G.dx / 100);
@@ -1801,20 +2135,26 @@ function endGesture(e) {
       const t = tasks().find(x => x.id === id);
       if (t?.date) addOp({ op: "tmr", id }, "⏰ #" + id + " — на завтра"); else moveSheet(id);
     } else reset();
-  } else if (g.k === "cal") {
-    if (Math.abs(g.dx) > 70) calSelect(iso(add(P(calSel()), g.dx < 0 ? 1 : -1)), g.dx < 0 ? 1 : -1, { bx: g.dx * .55, sx: g.sx, sw: g.sw, sy: g.sy });
-    else {
-      const cs = [...g.el.children];
-      g.el.style.transition = "transform .45s var(--spring)"; g.el.style.transform = "";
-      cs.forEach(c => { c.style.transition = "opacity .3s"; c.style.opacity = ""; });
-      setTimeout(() => { g.el.style.transition = ""; cs.forEach(c => c.style.transition = ""); }, 460);
-      if (g.sx != null) dselGo($("cstrip"), +$("cstrip").style.getPropertyValue("--i") || 0, { x: g.sx, w: g.sw, sy: g.sy });
+  } else if (g.k === "tab" || g.k === "week" || g.k === "dock") {
+    const nav = $("nav"), v = Math.abs(g.dx) / Math.max(1, e.timeStamp - g.t0), go = Math.abs(g.dx) > 70 || (Math.abs(g.dx) > 35 && v > .45);
+    nav.classList.remove("drag");
+    if (g.k === "dock") {
+      const k = Math.max(0, Math.min(TABS.length - 1, Math.round(g.i0 + g.dx / 45)));
+      if (k !== g.i0) goTab(TABS[k][0]); else nav.style.setProperty("--i", g.i0);
+    } else if (g.k === "week") {
+      if (go) { g.el.style.transform = ""; calWeekGo(g.dx < 0 ? 1 : -1); }
+      else { g.el.style.transition = "transform .4s var(--spring)"; g.el.style.transform = ""; }
+    } else {
+      const j = g.i0 + (g.dx < 0 ? 1 : -1);
+      if (go && TABS[j]) { g.el.style.transform = ""; goTab(TABS[j][0]); }
+      else { g.el.style.transition = "transform .4s var(--spring)"; g.el.style.transform = ""; nav.style.setProperty("--i", g.i0); }
     }
   } else if (g.k === "card") {
     g.el.style.transition = "";
     if (Math.abs(g.dx) > 100) {
       g.el.style.transform = `translateX(${Math.sign(g.dx) * 130}vw) rotate(${Math.sign(g.dx) * 24}deg)`;
       haptic(g.dx > 0 ? "ok" : "light");
+      if (study) study.busy = true;
       setTimeout(() => study && answer(g.dx > 0), 260);
     } else { g.el.style.transform = ""; g.el.querySelectorAll(".stamp").forEach(s => s.style.opacity = ""); }
   } else {
@@ -1831,10 +2171,11 @@ document.addEventListener("click", e => {
   const el = e.target.closest("button, [data-open], [data-wxs], #flip, .toggle");
   if (!el) return;
   const s = el.dataset;
-  if (s.tab) { if (tab !== s.tab) haptic("sel"); tab = s.tab; deck = null; study = null; selDay = null; openTask = null; ffold = cfold = null; render(); scrollTo({ top: 0 }); return; }
+  if (s.tab) { goTab(s.tab, true); return; }
   if (s.wxs) { haptic("light"); wxSheet(); return; }
-  if (s.study) { startStudy(s.study); return; }
-  if (s.ans !== undefined) { if (study) answer(s.ans === "1"); return; }
+  if (s.retry !== undefined) { location.reload(); return; }
+  if (s.study) { startStudy(s.study, s.unit || (study?.unit ?? null)); return; }
+  if (s.ans !== undefined) { if (study) flyAnswer(s.ans === "1"); return; }
   if (s.sx === "undo") { if (study) undoAnswer(); return; }
   if (s.sx === "finish") { if (study) { study.q = study.q.slice(0, study.pos); haptic("sel"); render(false); } return; }
   if (s.sx === "end") { study = null; haptic("sel"); render(); scrollTo({ top: 0 }); return; }
@@ -1856,9 +2197,9 @@ document.addEventListener("click", e => {
   if (el.id === "flip") { if (study) { study.flipped = !study.flipped; el.classList.toggle("on", study.flipped); } haptic("light"); return; }
   if (s.fdl) { const f = fileBy(s.fdl); if (f) dlFile(f); return; }
   if (s.fview) { const f = fileBy(s.fview); if (f) viewFile(f); return; }
-  if (s.vclose !== undefined) { $("viewer").classList.remove("on"); return; }
+  if (s.vclose !== undefined) { closeViewer(); return; }
   if (s.vdl !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) dlFile(f); return; }
-  if (s.vsend !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) { $("viewer").classList.remove("on"); addOp({ op: "send_file", path: f.path, task: f.task }, "📩 Придёт в чат после отправки"); } return; }
+  if (s.vsend !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) { closeViewer(); addOp({ op: "send_file", path: f.path, task: f.task }, "📩 Придёт в чат после отправки"); } return; }
   if (s.file !== undefined) { addOp({ op: "send_file", path: s.file, task: +s.task || null }, "📩 Придёт в чат после отправки"); return; }
   if (s.qd !== undefined) { draft.date = s.qd || null; document.querySelectorAll("#nq .btn").forEach(b => b.classList.toggle("on", b === el)); const di = $("ndate"); if (di) di.value = s.qd; haptic("sel"); return; }
   if (s.tg === "imp") { draft.imp = !draft.imp; $("nimp").classList.toggle("on", draft.imp); haptic("sel"); return; }
@@ -1881,11 +2222,29 @@ $("undo").onclick = () => { ops.pop(); store.set("ops", ops); toast("↩︎ От
 $("send").onclick = sendOps;
 if (tg?.MainButton) tg.MainButton.onClick(sendOps);
 if (tg?.BackButton) tg.BackButton.onClick(() => { goBack(); });
-function goBack() { if (tab === "cards" && study) study = null; else if (tab === "cards" && deck !== null) deck = null; else if (tab === "cards") cfold = null; else ffold = null; haptic("sel"); render(); scrollTo({ top: 0 }); }
+// кнопка «Назад» Telegram (на Android — и системная «назад»): закрывает сначала просмотр файла, потом шторку, потом папку/колоду
+function syncBack() {
+  if (!tg?.BackButton) return;
+  const need = viewerOn() || sheetOn() || (tab === "cards" && (study || deck !== null || cfold)) || (tab === "files" && ffold);
+  need ? tg.BackButton.show() : tg.BackButton.hide();
+}
+function goTab(t, again) {
+  if (t === tab && !again) return;
+  if (tab !== t) haptic("sel");
+  tab = t; deck = null; study = null; selDay = null; openTask = null; ffold = cfold = null;
+  render(); scrollTo({ top: 0 });
+}
+function goBack() {
+  if (viewerOn()) { closeViewer(); haptic("sel"); return; }
+  if (sheetOn()) { closeSheet(); haptic("sel"); return; }
+  if (tab === "cards" && study) study = null; else if (tab === "cards" && deck !== null) deck = null; else if (tab === "cards") cfold = null; else ffold = null; haptic("sel"); render(); scrollTo({ top: 0 }); }
 
 // шапка мягко уходит при прокрутке, сверху появляется компактная полоса
+let fabY = 0;
 addEventListener("scroll", () => {
-  const y = scrollY, h = $("hud");
+  const y = scrollY, h = $("hud"), f = $("fab");
+  if (y < 80) { f.classList.remove("away"); fabY = y; }
+  else if (Math.abs(y - fabY) > 10) { f.classList.toggle("away", y > fabY); fabY = y; }
   h.style.transform = `translateY(${Math.min(y, 300) * .35}px)`;
   h.style.opacity = Math.max(0, 1 - y / 220);
   $("topbar").classList.toggle("on", y > 150);
@@ -1902,9 +2261,26 @@ $("vbar").innerHTML = `<button class="btn" data-vclose aria-label="Закрыт�
 applySky(); renderNav(); renderHud(true);
 requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove("noanim")));
 refreshWeather(); setInterval(refreshWeather, 15 * 60000);
-load().then(d => { D = d; W = W || d.weather || null; applySky(); render(); srsSync(); }).catch(err => {
-  $("main").innerHTML = `<div class="glass card msg"><b>🔒</b>${esc(err.message && !/decrypt|operation/i.test(err.message) ? err.message : "Не удалось расшифровать данные — открой планер кнопкой в чате с ботом")}</div>`;
+(async () => {
+  let cached = null;
+  try { cached = localStorage.getItem("dataEnc"); } catch (e) {}
+  if (cached) { try { showData(await decryptData(cached), cached); } catch (e) { D = null; } }   // копия от другого ключа или старого формата — просто ждём свежую
+  try {
+    const txt = await fetchData();
+    if (txt !== dataTxt) showData(await decryptData(txt), txt);
+  } catch (err) {
+    if (D) { offline = true; render(false); toast(`Нет сети — данные от ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} ${D.generated.slice(11, 16)}`); return; }
+    const net = err instanceof TypeError || /fetch|network|load failed/i.test(err.message || "");
+    const msg = net ? "Нет связи — не получилось загрузить данные. Проверь интернет." : err.message && !/decrypt|operation/i.test(err.message) ? err.message : "Не удалось расшифровать данные — открой планер кнопкой в чате с ботом";
+    $("main").innerHTML = `<div class="glass card msg"><b>${net ? "📡" : "🔒"}</b>${esc(msg)}${net ? '<br><button class="btn pri" data-retry style="margin-top:16px">Повторить</button>' : ""}</div>`;
+  }
+})();
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshData();
+  else if (viewerOn() && store.get("lastView", null)) store.set("lastView", { ...store.get("lastView", {}), at: Date.now() });
 });
+try { tg?.onEvent?.("activated", () => refreshData()); } catch (e) {}
+setInterval(() => { if (!document.hidden) refreshData(); }, 10 * 60000);
 </script>
 </body>
 </html>
