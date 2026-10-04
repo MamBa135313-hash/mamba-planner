@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041627">
+<meta name="app-v" content="202610041632">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -548,10 +548,22 @@ function focus(L, T, nowM) {
     lab = "Далее"; title = next.n; meta = `${next.s}–${next.e} · ${next.m}`; fc = colOf(next);
     pct = 1 - Math.min(m, 180) / 180; big = m < 60 ? m : Math.floor(m / 60) + "<small style='font-size:.55em'>ч</small>" + (m % 60 ? String(m % 60).padStart(2, "0") : ""); small = m < 60 ? "мин" : "до пары";
   } else {
-    const nd = T.find(t => t.date && t.date >= today());
-    lab = L.length ? "Пары позади" : "Свободный день"; fc = "#38e6a6";
-    title = nd ? nd.text : "Дедлайнов нет"; meta = nd ? `ближайший дедлайн · #${nd.id} · ${relTxt(nd.date)}${nd.time ? " в " + nd.time : ""}` : "можно выдохнуть ✨";
-    pct = 1; big = "✓"; small = L.length ? "готово" : "отдых";
+    // пар больше нет — кольцо отсчитывает время до ближайшего дедлайна
+    const left = t => diff(t.date) * 1440 + mins(t.time || "23:59") - nowM;
+    const nd = T.find(t => t.date && left(t) > 0);
+    if (nd) {
+      const m = left(nd);
+      lab = (L.length ? "Пары позади" : "Пар нет") + " · ближайший дедлайн"; fc = m < 1440 ? "#ff6b6b" : m < 4320 ? "#ffa94d" : "#8b7bff";
+      title = nd.text; meta = `#${nd.id} · ${relTxt(nd.date)}${nd.time ? " в " + nd.time : ""}`;
+      pct = 1 - Math.min(m, 4320) / 4320;
+      if (m < 60) { big = m; small = "мин"; }
+      else if (m < 2880) { big = Math.floor(m / 60); small = pl(Math.floor(m / 60), "час", "часа", "часов"); }
+      else { big = Math.floor(m / 1440); small = pl(Math.floor(m / 1440), "день", "дня", "дней"); }
+    } else {
+      lab = L.length ? "Пары позади" : "Свободный день"; fc = "#38e6a6";
+      title = "Дедлайнов нет"; meta = "можно выдохнуть ✨";
+      pct = 1; big = "✓"; small = L.length ? "готово" : "отдых";
+    }
   }
   const C = 2 * Math.PI * 34;
   return `<section class="glass focus" style="--fc:${fc}"><div class="fx">
