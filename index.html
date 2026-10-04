@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610042108">
+<meta name="app-v" content="202610042122">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -124,7 +124,7 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .focus { margin-top: 8px; overflow: hidden; }
 .fpages { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .fpages::-webkit-scrollbar { display: none; }
-.fp { position: relative; flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; padding: 18px 18px 14px; display: flex; flex-direction: column; justify-content: center; will-change: opacity, transform; }
+.fp { position: relative; flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; padding: 18px 18px 14px; display: flex; flex-direction: column; justify-content: center; will-change: opacity; }
 /* свечение — одно на всю плашку: при свайпе цвет страницы плавно перетекает в цвет следующей, без резкой границы */
 .fgw { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
 .fgw i { position: absolute; inset: 0; }
@@ -167,10 +167,12 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
   background: linear-gradient(160deg, color-mix(in srgb, var(--uc) 28%, transparent), color-mix(in srgb, var(--uc) 6%, transparent) 75%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px color-mix(in srgb, var(--uc) 32%, transparent), 0 14px 26px -16px var(--uc); transition: transform .4s var(--spring); }
 .tkt:active { transform: scale(.94); }
-/* ближайший дедлайн уже крупно наверху (страница «Дедлайны») — в ленте он плавно схлопывается, а при «Парах» так же плавно возвращается */
-.tkt.lead { transition: transform .4s var(--spring), flex-basis .5s var(--ease), padding .5s var(--ease), margin .5s var(--ease), opacity .3s ease, box-shadow .3s; }
-.fdl .tkt.lead { flex-basis: 0; padding-left: 0; padding-right: 0; margin-right: -10px; opacity: 0; transform: scale(.8); box-shadow: none; pointer-events: none; }
-.tkt.solo { display: none; flex-basis: 100%; } .fdl .tkt.solo { display: flex; height: auto; padding: 18px; }
+/* ближайший дедлайн уже крупно наверху (страница «Дедлайны») — в ленте он схлопывается, при «Парах» возвращается;
+   ширину и прозрачность ведёт сам свайп плашки (leadFx), поэтому лента едет вместе с пальцем и ничего не догоняет после */
+.tkt.lead .tx, .tkt.lead .tf { flex: none; width: 124px; }
+.tkt.lead .ti { right: auto; left: 139px; transform: translateX(-100%); } .tkt.lead .pd { right: auto; left: 129px; }
+.tkts { position: relative; }
+.tkt.solo { position: absolute; left: 14px; top: 10px; width: 150px; height: 176px; padding: 14px; opacity: 0; pointer-events: none; }
 .tkt::before { content: ""; position: absolute; left: -34px; top: -34px; width: 120px; height: 120px; border-radius: 50%; z-index: -1; background: radial-gradient(circle, var(--uc), transparent 70%); opacity: .38; }
 .tkt .tr { position: relative; width: 46px; height: 46px; flex: none; }
 .tkt .tr svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
@@ -765,9 +767,27 @@ function focusPage() {
 }
 function pagesFx(el, t) {
   if (t === undefined) t = el.clientWidth ? el.scrollLeft / el.clientWidth : 0;
-  [...el.children].forEach((pg, k) => { const d = Math.min(1, Math.abs(k - t)); pg.style.opacity = (1 - .65 * d).toFixed(3); pg.style.transform = d ? `scale(${(1 - .05 * d).toFixed(4)})` : ""; });
+  // сжимаем содержимое страницы, а не саму страницу: точку остановки прокрутки браузер считает по рамке страницы с учётом transform,
+  // и сжатая страница останавливала бы прокрутку на несколько пикселей мимо края — с рывком в конце свайпа
+  [...el.children].forEach((pg, k) => { const d = Math.min(1, Math.abs(k - t)), sc = d ? `scale(${(1 - .05 * d).toFixed(4)})` : ""; pg.style.opacity = (1 - .65 * d).toFixed(3); for (const c of pg.children) c.style.transform = sc; });
   const g = el.parentElement.querySelector(".fgw");
   if (g) [...g.children].forEach((x, k) => x.style.opacity = Math.max(0, 1 - Math.abs(k - t)).toFixed(3));
+  if (el.id === "fpages") leadFx(t);
+}
+// лента дедлайнов следует за свайпом верхней плашки: к «Дедлайнам» ближайший уходит из ленты, к «Парам» возвращается
+function leadFx(t) {
+  const lead = document.querySelector(".tkts .tkt.lead"); if (!lead) return;
+  const c = Math.min(1, Math.max(0, t)), e = c * c * (3 - 2 * c), solo = lead.parentElement.querySelector(".tkt.solo");
+  lead.style.opacity = Math.max(0, 1 - e * 1.5).toFixed(3);
+  lead.style.pointerEvents = e > .5 ? "none" : "";
+  if (solo) {   // других дедлайнов на неделе нет — на его месте проявляется надпись, лента не двигается
+    solo.style.opacity = Math.max(0, e * 1.5 - .5).toFixed(3);
+    solo.style.pointerEvents = e > .5 ? "auto" : "";
+  } else {      // остальные карточки съезжают на его место вместе с пальцем
+    lead.style.flexBasis = (150 * (1 - e)).toFixed(1) + "px";
+    lead.style.paddingLeft = lead.style.paddingRight = (13 * (1 - e)).toFixed(2) + "px";
+    lead.style.marginRight = (-10 * e).toFixed(2) + "px";
+  }
 }
 function syncFocus(i, smooth) {
   const el = $("fpages"); if (!el) return;
@@ -775,7 +795,6 @@ function syncFocus(i, smooth) {
   el.scrollTo({ left: i * el.clientWidth, behavior: smooth ? "smooth" : "auto" });
   if (!smooth) pagesFx(el, i);
   document.querySelectorAll(".fsw button").forEach((b, k) => b.classList.toggle("on", k === i));
-  $("main").classList.toggle("fdl", i === 1);
 }
 function syncChats(i, smooth) {
   const el = $("dpages"); if (!el) return;
@@ -799,8 +818,6 @@ document.addEventListener("scroll", e => {
   pagesFx(e.target);
   const el = e.target, i = Math.round(el.scrollLeft / el.clientWidth);
   document.querySelectorAll(".fsw button").forEach((b, k) => b.classList.toggle("on", k === i));
-  clearTimeout(syncFocus.f);
-  syncFocus.f = setTimeout(() => $("main").classList.toggle("fdl", Math.round(el.scrollLeft / el.clientWidth) === 1), 160);
   if (Date.now() - (syncFocus.prog || 0) < 700) return; // прокрутили мы сами, а не свайп
   clearTimeout(syncFocus.t);
   syncFocus.t = setTimeout(() => { if (i !== focusPage()) { store.set("focusPage", { d: today(), i }); haptic("sel"); } }, 140);
