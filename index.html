@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" class="noanim">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #07080f; --bg-2: #0d1020; --glass: rgba(255,255,255,.055); --glass-2: rgba(255,255,255,.09);
+  --bg: #07080f; --bg-2: #0d1020; --glass: rgba(12,14,30,.62); --glass-2: rgba(26,28,52,.72);
   --stroke: rgba(255,255,255,.09); --stroke-2: rgba(255,255,255,.16);
   --text: #eef0ff; --text-2: #a3a8c3; --text-3: #6b7090;
   --accent: #7c6cff; --accent-2: #3ad6ff; --accent-3: #ff5fa2;
@@ -53,6 +53,29 @@ body {
 .wx-snow .aurora { --a1: #8fa8ff; --a2: #bfe3ff; --a3: #c9b8ff; }
 .light.wx-snow .aurora { opacity: .4; }
 #sky { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+#scene { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
+#scene .g { position: absolute; inset: 0; transition: background 2.5s ease; }
+#scene .haze { position: absolute; inset: 0; transition: background 2.5s ease, opacity 2.5s; }
+.sun { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; transition: left 3s ease, top 3s ease, opacity 2.5s, transform 3s, filter 2.5s;
+  background: radial-gradient(circle, #fffef4 0%, #fff1b8 38%, #ffcf5c 62%, rgba(255,190,70,0) 71%);
+  box-shadow: 0 0 70px 26px rgba(255,214,120,.42), 0 0 220px 90px rgba(255,190,90,.22); }
+.sun.low { background: radial-gradient(circle, #fff3d6 0%, #ffb36b 40%, #ff7a3d 62%, rgba(255,110,60,0) 71%); box-shadow: 0 0 90px 36px rgba(255,140,80,.5), 0 0 260px 120px rgba(255,100,70,.28); transform: scale(1.25); }
+.moon { position: absolute; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%; background: radial-gradient(circle at 38% 35%, #fffef6, #e9e6d6 60%, #cfcab4); transition: left 3s, top 3s, opacity 2.5s;
+  box-shadow: 0 0 40px 10px rgba(230,235,255,.25), 0 0 140px 50px rgba(160,180,255,.12); overflow: hidden; }
+.moon i { position: absolute; inset: -2px; border-radius: 50%; background: #0b1030; transition: transform 1s; }
+.skyline { position: absolute; left: 0; bottom: 0; width: 100%; height: 26vh; min-height: 150px; transition: opacity 2s; }
+.skyline .b { transition: fill 2.5s; }
+.skyline .w { fill: #ffd77a; transition: opacity 2.5s; }
+.sun, .moon { opacity: 0; }
+.noanim #scene *, .noanim #scene { transition: none !important; }
+.sec h3, .sec span { padding: 4px 10px; border-radius: 99px; background: var(--glass); border: 1px solid var(--stroke); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--text-2) !important; text-shadow: none !important; }
+.sec { margin-left: 0; margin-right: 0; }
+.foot span { padding: 4px 10px; border-radius: 99px; background: var(--glass); }
+header, .wk b { color: var(--on-sky, var(--text)); transition: color 1.5s; }
+.eyebrow { color: var(--on-sky-2, var(--text-3)); text-shadow: 0 1px 8px var(--on-sky-sh, transparent); }
+.scene-dark h1 .g { background: linear-gradient(135deg, #c9c2ff 0%, #9ff2ff 100%); -webkit-background-clip: text; background-clip: text; }
+.sec h3 { text-shadow: 0 1px 10px var(--on-sky-sh, transparent); }
+header h1 { text-shadow: 0 2px 18px var(--on-sky-sh, transparent); }
 .flash { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: #dfe6ff; opacity: 0; }
 .flash.on { animation: flash .9s ease-out; }
 @keyframes flash { 0% { opacity: 0 } 8% { opacity: .35 } 16% { opacity: .05 } 26% { opacity: .28 } 100% { opacity: 0 } }
@@ -234,7 +257,8 @@ textarea { min-height: 84px; resize: vertical; }
 </style>
 </head>
 <body>
-<div class="aurora"><i></i><i></i><i></i></div>
+<div id="scene"><div class="g" id="sceneG"></div><div class="sun" id="sun"></div><div class="moon" id="moon"><i id="moonShade"></i></div><div class="haze" id="haze"></div>
+<svg class="skyline" id="skyline" viewBox="0 0 400 120" preserveAspectRatio="xMidYMax slice"></svg></div>
 <canvas id="sky"></canvas><div class="flash" id="flash"></div>
 <header><div class="eyebrow" id="eyebrow">&nbsp;</div><h1 id="title">Планер</h1></header>
 <main id="main"><div class="msg"><b>✨</b>Загружаю…</div></main>
@@ -531,17 +555,90 @@ function wxChip() {
   const [e, n] = WXN[k], t = W ? Math.round(W.temp) : null;
   return `<div class="wxc">${phase() === "night" && (k === "clear" || k === "partly") ? "🌙" : e}${t !== null ? ` ${t > 0 ? "+" : ""}${t}°` : ""} <small>${n}</small></div>`;
 }
+// ---------- сцена: небо, солнце, луна, город ----------
+const hex = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+const mixc = (a, b, t) => { const A = hex(a), B = hex(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join(""); };
+const lum = c => { const [r, g, b] = hex(c); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; };
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+// ключевые кадры неба по высоте солнца: [высота, верх, середина, низ]
+const SKY = [[-1, "#03050f", "#070b22", "#0d1436"], [-.12, "#0a0f2e", "#1d1a52", "#3a2a6a"], [0, "#1f2a6b", "#8a4a8e", "#ff8a5b"],
+  [.12, "#3d63c9", "#9fb6ef", "#ffcf9e"], [.35, "#2f7fe6", "#6fb2ff", "#c9e6ff"], [1, "#1f6fe0", "#5aa8ff", "#bfe2ff"]];
+function skyAt(alt) {
+  let i = 0; while (i < SKY.length - 2 && alt > SKY[i + 1][0]) i++;
+  const [a0, ...c0] = SKY[i], [a1, ...c1] = SKY[i + 1], t = clamp((alt - a0) / (a1 - a0));
+  return c0.map((c, k) => mixc(c, c1[k], t));
+}
+const WX_TINT = { cloudy: ["#6c7689", .55], fog: ["#b9bec8", .6], drizzle: ["#5d6a80", .55], rain: ["#3f4a5e", .68], storm: ["#1d2333", .78], snow: ["#c4cbd8", .5], partly: ["#9aa6bd", .15] };
+const SUN_VIS = { clear: 1, partly: .85, cloudy: .25, fog: .15, drizzle: .2, rain: .08, storm: 0, snow: .3 };
+function moonPhase(d) { const syn = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14); return (((d - ref) / 864e5) % syn + syn) % syn / syn; } // 0 — новолуние, .5 — полнолуние
+function nowMin() { const a = QS.get("at"); if (a && /^\d{1,2}:\d{2}$/.test(a)) return mins(a.padStart(5, "0")); const n = msk(); return n.getHours() * 60 + n.getMinutes(); }
+function buildSkyline() {
+  const svg = document.getElementById("skyline"); if (svg.childElementCount) return;
+  let x = 0, b = "", w = "", seed = 7; const r = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const tower = (cx, h) => `<path class="b" d="M${cx - 16} 120V${120 - h * .55}h6V${120 - h * .7}h4V${120 - h * .82}h3V${120 - h}h2l1-14 1 14h2V${120 - h * .82}h3V${120 - h * .7}h4V${120 - h * .55}h6V120Z"/>`;
+  while (x < 400) {
+    const bw = 10 + r() * 22, bh = 18 + r() * 42;
+    if (Math.abs(x - 300) < 20) { b += tower(300, 92); x = 322; continue; }
+    if (Math.abs(x - 95) < 16) { b += tower(95, 74); x = 113; continue; }
+    b += `<rect class="b" x="${x.toFixed(1)}" y="${(120 - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}"/>`;
+    for (let wy = 120 - bh + 5; wy < 116; wy += 7) for (let wx = x + 3; wx < x + bw - 3; wx += 5) if (r() < .28) w += `<rect class="w" x="${wx.toFixed(1)}" y="${wy.toFixed(1)}" width="2" height="2.6" rx=".4"/>`;
+    x += bw + 1 + r() * 3;
+  }
+  svg.innerHTML = b + w;
+}
+function applyScene() {
+  buildSkyline();
+  const m = nowMin(), k = wxKind() || "clear";
+  const sr = W?.sunrise ? mins(W.sunrise.slice(11, 16)) : 7 * 60, ss = W?.sunset ? mins(W.sunset.slice(11, 16)) : 18 * 60;
+  const ph = QS.get("ph");
+  let alt, p;
+  if (ph) { alt = { night: -.8, dawn: .02, dusk: .02, day: .85 }[ph] ?? .5; p = ph === "dawn" ? .04 : ph === "dusk" ? .96 : .5; }
+  else { p = (m - sr) / (ss - sr); alt = p >= 0 && p <= 1 ? Math.sin(Math.PI * p) : -Math.min(1, Math.min(Math.abs(m - sr), Math.abs(m - ss + (m < sr ? -1440 : 0)), Math.abs(m + 1440 - ss)) / 90); }
+  let [top, mid, bot] = skyAt(alt);
+  const tint = WX_TINT[k];
+  if (tint) { const night = alt < -.05 ? .55 : 1; [top, mid, bot] = [top, mid, bot].map(c => mixc(c, mixc(tint[0], "#05070f", alt < 0 ? .75 : 0), tint[1] * night)); }
+  document.getElementById("sceneG").style.background = `linear-gradient(180deg, ${top} 0%, ${mid} 55%, ${bot} 100%)`;
+  document.getElementById("haze").style.background = k === "fog" ? "linear-gradient(180deg, rgba(220,225,235,.0), rgba(220,225,235,.45))" : "transparent";
+  // солнце по дуге: x слева направо, высота — синус
+  const H = innerHeight, Wd = innerWidth, sun = document.getElementById("sun"), moon = document.getElementById("moon");
+  const sx = 8 + 84 * clamp(p), sy = .66 - .54 * clamp(alt, 0, 1);
+  sun.style.left = sx + "%"; sun.style.top = (sy * H) + "px";
+  sun.classList.toggle("low", alt < .18);
+  sun.style.opacity = alt > -.06 ? (SUN_VIS[k] ?? 1) * clamp((alt + .06) / .12) : 0;
+  sun.style.filter = k === "partly" ? "blur(1px)" : "";
+  // луна: ночью по своей дуге, фаза — реальная
+  const night = alt < -.05, np = m >= ss ? (m - ss) / (1440 - ss + sr) : (m + 1440 - ss) / (1440 - ss + sr);
+  const ma = Math.sin(Math.PI * clamp(ph ? .45 : np));
+  moon.style.left = (10 + 80 * clamp(ph ? .3 : np)) + "%"; moon.style.top = ((.6 - .45 * ma) * H) + "px";
+  moon.style.opacity = night ? ({ clear: 1, partly: .8, cloudy: .2, snow: .2 }[k] ?? .05) : 0;
+  const mp = moonPhase(Date.now());
+  // тень сдвигается: растущая луна — тень уходит влево, убывающая — наползает справа
+  document.getElementById("moonShade").style.transform = `translateX(${mp < .5 ? -128 * mp : 64 - 128 * (mp - .5)}px)`;
+  // город: днём силуэт, ночью — тёмный с огнями окон
+  const cityCol = mixc(mixc(bot, "#0a0d1c", alt < 0 ? .82 : .55), "#000000", k === "storm" ? .3 : 0);
+  document.querySelectorAll("#skyline .b").forEach(e => e.style.fill = cityCol);
+  document.querySelectorAll("#skyline .w").forEach((e, i) => e.style.opacity = alt < .05 ? (i % 5 ? .85 : .35) : 0);
+  // цвет текста поверх неба
+  const dark = lum(mixc(top, mid, .4)) < .5, R = document.documentElement.style;
+  R.setProperty("--on-sky", dark ? "#ffffff" : "#0f1430");
+  R.setProperty("--on-sky-2", dark ? "rgba(255,255,255,.72)" : "rgba(15,20,48,.62)");
+  R.setProperty("--on-sky-sh", dark ? "rgba(0,0,0,.35)" : "rgba(255,255,255,.35)");
+  document.documentElement.classList.toggle("scene-dark", dark);
+  try { tg?.setHeaderColor?.(top); tg?.setBackgroundColor?.(bot); } catch (e) {}
+}
 function applySky() {
+  applyScene();
   const R = document.documentElement, k = wxKind() || "none";
   R.className = R.className.replace(/\b(ph|wx)-\S+/g, "").trim();
   R.classList.add("ph-" + phase(), "wx-" + k);
   sky.set(k, W ? W.precip : 0, W ? W.wind : 0, phase() === "night");
+  sky.tone(document.documentElement.classList.contains("scene-dark"));
 }
 
 // частицы на холсте: капли, снег, облака, туман, звёзды
 const sky = (() => {
   const cv = document.getElementById("sky"), cx = cv.getContext("2d"), still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let kind = "none", night = false, wind = 0, P = [], C = [], w = 0, h = 0, raf = 0, last = 0, nextFlash = 0;
+  let kind = "none", night = false, dark = true, wind = 0, P = [], C = [], w = 0, h = 0, raf = 0, last = 0, nextFlash = 0;
   const rnd = (a, b) => a + Math.random() * (b - a);
   function size() { const r = Math.min(devicePixelRatio || 1, 2); w = innerWidth; h = innerHeight; cv.width = w * r; cv.height = h * r; cx.setTransform(r, 0, 0, r, 0, 0); }
   function seed(precip) {
@@ -549,8 +646,9 @@ const sky = (() => {
     P = []; C = [];
     const n = kind === "rain" ? Math.min(220, 60 + precip * 40) * area / 4 : kind === "storm" ? 260 * area / 4 : kind === "drizzle" ? 55 * area / 4 : kind === "snow" ? 90 * area / 4 : night && (kind === "clear" || kind === "partly") ? 70 * area / 4 : 0;
     for (let i = 0; i < n; i++) P.push({ x: rnd(0, w), y: rnd(0, h), z: rnd(.4, 1), p: rnd(0, 6.28) });
-    const nc = kind === "cloudy" ? 6 : kind === "partly" ? 3 : kind === "fog" ? 5 : kind === "rain" || kind === "storm" ? 4 : 0;
-    for (let i = 0; i < nc; i++) C.push({ x: rnd(-.2, 1.1) * w, y: kind === "fog" ? rnd(.15, .95) * h : rnd(-.05, .35) * h, r: rnd(.35, .6) * Math.max(w, 400), v: rnd(4, 10) });
+    const nc = kind === "cloudy" ? 7 : kind === "partly" ? 3 : kind === "fog" ? 6 : kind === "rain" || kind === "storm" ? 7 : kind === "snow" || kind === "drizzle" ? 5 : 0;
+    for (let i = 0; i < nc; i++) C.push({ x: rnd(-.2, 1.1) * w, y: kind === "fog" ? rnd(.15, .95) * h : rnd(.02, .4) * h, r: rnd(.18, .3) * Math.max(w, 400), v: rnd(3, 8),
+      puffs: [[0, 0, .75], [-.55, .12, .55], [.55, .1, .6], [-.2, -.3, .5], [.25, -.25, .55], [.9, .2, .4], [-.9, .22, .4]] });
   }
   function frame(t) {
     const dt = Math.min(50, t - (last || t)) / 16.7; last = t;
@@ -558,9 +656,13 @@ const sky = (() => {
     cx.clearRect(0, 0, w, h);
     for (const c of C) {
       c.x += c.v * dt * .05 * (kind === "fog" ? 2 : 1); if (c.x - c.r > w) c.x = -c.r;
-      const g = cx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r), a = kind === "fog" ? .10 : kind === "rain" || kind === "storm" ? .10 : .07;
-      g.addColorStop(0, light ? `rgba(120,130,160,${a * 1.4})` : `rgba(200,210,235,${a})`); g.addColorStop(1, "rgba(0,0,0,0)");
-      cx.fillStyle = g; cx.fillRect(c.x - c.r, c.y - c.r, c.r * 2, c.r * 2);
+      const heavy = kind === "rain" || kind === "storm", a = kind === "fog" ? .16 : heavy ? .32 : kind === "cloudy" ? .3 : .24;
+      const col = heavy ? (dark ? "70,78,98" : "95,104,124") : dark ? "150,160,190" : "255,255,255";
+      for (const [ox, oy, rr] of c.puffs) {
+        const px = c.x + ox * c.r, py = c.y + oy * c.r, R = rr * c.r, g = cx.createRadialGradient(px, py, 0, px, py, R);
+        g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(.6, `rgba(${col},${a * .55})`); g.addColorStop(1, `rgba(${col},0)`);
+        cx.fillStyle = g; cx.fillRect(px - R, py - R, R * 2, R * 2);
+      }
     }
     if (kind === "rain" || kind === "storm" || kind === "drizzle") {
       const dz = kind === "drizzle", slant = Math.max(-.35, Math.min(.35, wind / 60)) || .12;
@@ -593,9 +695,9 @@ const sky = (() => {
     raf = still || document.hidden || (!P.length && !C.length) ? 0 : requestAnimationFrame(frame);
   }
   function start() { cancelAnimationFrame(raf); last = 0; raf = requestAnimationFrame(frame); }
-  addEventListener("resize", () => { size(); seed(0); start(); });
+  addEventListener("resize", () => { size(); seed(0); start(); applyScene(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) start(); });
-  return { set(k, precip, wd, nt) { if (k === kind && nt === night) return; kind = k; night = nt; wind = wd || 0; size(); seed(precip || 0); start(); } };
+  return { tone(d) { dark = d; }, set(k, precip, wd, nt) { if (k === kind && nt === night) return; kind = k; night = nt; wind = wd || 0; size(); seed(precip || 0); start(); } };
 })();
 
 async function refreshWeather() {
@@ -621,7 +723,7 @@ function render(animate = true) {
   const V = { today: vToday, week: vWeek, tasks: vTasks, sched: vSched, cards: vCards, files: vFiles }[tab];
   const main = document.getElementById("main");
   main.className = animate ? "anim" : "";
-  main.innerHTML = V() + `<div class="foot">обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</div>`;
+  main.innerHTML = V() + `<div class="foot"><span>обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
   document.getElementById("fab").style.display = tab === "tasks" || tab === "today" ? "grid" : "none";
   if (tg?.BackButton) (tab === "cards" && deck !== null) ? tg.BackButton.show() : tg.BackButton.hide();
   renderQueue();
@@ -690,7 +792,8 @@ document.getElementById("send").onclick = sendOps;
 if (tg?.MainButton) tg.MainButton.onClick(sendOps);
 if (tg?.BackButton) tg.BackButton.onClick(() => { deck = null; render(); });
 
-applySky(); refreshWeather(); setInterval(refreshWeather, 15 * 60000); setInterval(applySky, 60000);
+applySky(); requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove("noanim")));
+refreshWeather(); setInterval(refreshWeather, 15 * 60000); setInterval(applySky, 60000);
 load().then(d => { D = d; W = W || d.weather || null; applySky(); if (msk().getDay() === 0) schedWeek = 1; render(); }).catch(err => {
   document.getElementById("main").innerHTML = `<div class="msg"><b>🔒</b>${esc(err.message && !/decrypt|operation/i.test(err.message) ? err.message : "Не удалось расшифровать данные — открой планер кнопкой в чате с ботом")}</div>`;
 });
