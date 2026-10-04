@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041944">
+<meta name="app-v" content="202610041957">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -328,6 +328,14 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .file .ft { font-size: 11.5px; color: var(--text-3); font-weight: 700; }
 .file .btn { justify-content: center; }
 .ah { margin: 18px 2px 10px; } .ah .chip { font-size: 13px; }
+.folders { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.folder { border: 0; text-align: left; color: var(--text); padding: 16px 16px 15px; min-height: 140px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; border-radius: 24px; transition: transform .4s var(--spring); }
+.folder:active { transform: scale(.95); }
+.folder .fi { width: 58px; height: 46px; margin-bottom: auto; filter: drop-shadow(0 10px 16px color-mix(in srgb, var(--fc) 55%, transparent)); }
+.folder .fi .bk { fill: color-mix(in srgb, var(--fc) 70%, #000 20%); }
+.folder .fi .fr { fill: var(--fc); }
+.folder b { font: 600 16px/1.2 var(--disp); letter-spacing: -.03em; margin-top: 12px; }
+.folder span { font-size: 12px; font-weight: 800; color: var(--text-2); }
 .fbtns { display: flex; gap: 8px; } .fbtns .btn { white-space: nowrap; } .fbtns .btn.pri { flex: 1; }
 .fpill { border: 0; margin: 0 6px 6px 0; padding: 6px 10px; font-size: 12px; cursor: pointer; }
 .fbtns .btn.sq { flex: none; width: 46px; justify-content: center; padding: 10px 0; }
@@ -506,6 +514,7 @@ const DECK_GRADS = ["linear-gradient(135deg,#7c6cff,#3ad6ff)", "linear-gradient(
 
 let D = null, tab = QS.get("tab") || "today", prevTab = null;
 let selDay = null, schedWeek = 0, filter = "all", deck = null, cardIdx = 0, flipped = false, openTask = null;
+let ffold = null, cfold = null; // открытая папка предмета во вкладках «Файлы» и «Карточки»
 
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -833,14 +842,44 @@ function vSched() {
   return h;
 }
 
+const knownKey = d => "known:" + (d.topic ? d.topic + "/" : "") + d.name;
+function deckTile(d, i) {
+  const k = store.get(knownKey(d), []).length;
+  return `<button class="deck" data-deck="${i}" style="background:${DECK_GRADS[i % DECK_GRADS.length]}"><div class="cnt">${d.cards.length}</div><div><b>${esc(d.name)}</b><span>${pl(d.cards.length, "карточка", "карточки", "карточек")}${d.task ? " · #" + d.task : ""} · знаю ${k}</span><div class="pr"><i style="width:${Math.round(k / d.cards.length * 100)}%"></i></div></div></button>`;
+}
+// ---------- папки предметов (архив): общие для «Файлов» и «Карточек» ----------
+const FOLD_C = ["#8b7bff", "#45dcff", "#ff8a5b", "#38e6a6", "#ff5fa2", "#ffd25c"];
+const unitWord = (subj, n) => /^english/.test(subj) ? pl(n, "юнит", "юнита", "юнитов") : pl(n, "тема", "темы", "тем");
+function topicsOf(items) { const m = new Map(); items.forEach(x => m.set(x.topic, x.topic_name)); return [...m].map(([id, name]) => ({ id, name })); }
+function folderTiles(items, fk) {
+  const subs = [...new Map(items.map(x => [x.subject, x.subject_name]))];
+  if (!subs.length) return "";
+  return `<div class="ah"><span class="chip">📚 Архив</span></div><div class="folders">${subs.map(([id, name], i) => {
+    const its = items.filter(x => x.subject === id), nt = topicsOf(its).length;
+    const what = fk === "c" ? `${its.length} ${pl(its.length, "колода", "колоды", "колод")}` : `${its.length} ${pl(its.length, "файл", "файла", "файлов")}`;
+    return `<button class="glass folder" data-fold="${esc(id)}" data-fk="${fk}" style="--fc:${FOLD_C[i % FOLD_C.length]}">
+      <svg class="fi" viewBox="0 0 64 50"><path class="bk" d="M4 8a5 5 0 0 1 5-5h14l6 6h26a5 5 0 0 1 5 5v29a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path class="fr" d="M4 18a5 5 0 0 1 5-5h46a5 5 0 0 1 5 5v25a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/></svg>
+      <b>${esc(name)}</b><span>${nt} ${unitWord(id, nt)} · ${what}</span></button>`;
+  }).join("")}</div>`;
+}
+function folderBar(x, items, fk) {
+  const nt = topicsOf(items).length;
+  return `<div class="glass wk"><button class="ar" data-fold="" data-fk="${fk}">${IC.prev}</button><b>📁 ${esc(x?.subject_name || "Папка")}<small>${nt} ${unitWord(x?.subject || "", nt)}</small></b><span style="width:40px"></span></div>`;
+}
+
 function vCards() {
   const decks = D.cards || [];
   if (!decks.length) return `<section class="glass card">${empty("🃏", "Колод пока нет.<br><br>Напиши боту «сделай карточки по #1» — он соберёт колоду из материалов задачи.")}</section>`;
-  if (deck === null) return `<div class="decks">${decks.map((d, i) => {
-    const k = store.get("known:" + d.name, []).length;
-    return `<button class="deck" data-deck="${i}" style="background:${DECK_GRADS[i % DECK_GRADS.length]}"><div class="cnt">${d.cards.length}</div><div><b>${esc(d.name)}</b><span>${pl(d.cards.length, "карточка", "карточки", "карточек")}${d.task ? " · #" + d.task : ""} · знаю ${k}</span><div class="pr"><i style="width:${Math.round(k / d.cards.length * 100)}%"></i></div></div></button>`;
-  }).join("")}</div>`;
-  const d = decks[deck], c = d.cards[cardIdx], known = new Set(store.get("known:" + d.name, []));
+  if (deck === null) {
+    const idx = decks.map((d, i) => [d, i]), reg = idx.filter(([d]) => !d.archive), arc = idx.filter(([d]) => d.archive);
+    if (cfold) {
+      const A = arc.filter(([d]) => d.subject === cfold);
+      return folderBar(A[0]?.[0], A.map(([d]) => d), "c") + topicsOf(A.map(([d]) => d)).map(t => `<div class="ah"><span class="chip">📚 ${esc(t.name)}</span></div>
+        <div class="decks">${A.filter(([d]) => d.topic === t.id).map(([d, i]) => deckTile(d, i)).join("")}</div>`).join("");
+    }
+    return (reg.length ? `<div class="decks">${reg.map(([d, i]) => deckTile(d, i)).join("")}</div>` : "") + folderTiles(arc.map(([d]) => d), "c");
+  }
+  const d = decks[deck], c = d.cards[cardIdx], known = new Set(store.get(knownKey(d), []));
   return `<div class="glass dh"><b>${cardIdx + 1} / ${d.cards.length}</b><div class="bar"><i style="width:${(cardIdx + 1) / d.cards.length * 100}%"></i></div><span>✓ ${known.size}</span></div>
     <div class="stack"><div class="gh g2"></div><div class="gh g1"></div>
       <div class="flip ${flipped ? "on" : ""}" id="flip"><div class="in">
@@ -856,16 +895,19 @@ const FT = { pdf: ["PDF", "#ff5d6c"], doc: ["DOC", "#4b8bff"], docx: ["DOC", "#4
 const extOf = x => ((/\.(\w{2,5})$/.exec(x.name) || /\.(\w{2,5})$/.exec(x.path || "") || [])[1] || "").toLowerCase();
 const ftype = x => x.kind === "photo" ? ["IMG", "#b45cff"] : FT[extOf(x)] || ["FILE", "#7c6cff"];
 function vFiles() {
-  const f = D.files || [], cur = f.filter(x => !x.archive), arc = f.filter(x => x.archive);
+  const f = D.files || [], cur = f.filter(x => !x.archive && !x.dup), arc = f.filter(x => x.archive); // копии задач, уже лежащие в архиве, не повторяем
   if (!f.length) return `<section class="glass card">${empty("📎", "Файлов пока нет — они появятся, когда к задачам прикрепят материалы")}</section>`;
   const tile = x => { const [n, c] = ftype(x); return `<div class="glass file"><div class="ty" style="--fc:${c}">${n}</div>
     <div class="fn">${esc(x.name)}</div>${x.archive ? "" : `<div class="ft">#${x.task} · ${esc(x.task_text.slice(0, 44))}</div>`}
     <div class="fbtns">${x.enc ? (viewable(x) ? `<button class="btn pri" data-fview="${esc(x.path)}">👁 Открыть</button>` : `<button class="btn pri" data-fdl="${esc(x.path)}">⬇️ Сохранить</button>`) : ""}
       <button class="btn ${x.enc ? "sq" : ""}" data-file="${esc(x.path)}" data-task="${x.task || ""}" ${x.path ? "" : "disabled"} aria-label="Прислать в чат">📩${x.enc ? "" : " В чат"}</button></div></div>`; };
+  if (ffold) {
+    const A = arc.filter(x => x.subject === ffold);
+    return folderBar(A[0], A, "f") + topicsOf(A).map(t => `<div class="ah"><span class="chip">📚 ${esc(t.name)}</span></div><div class="files">${A.filter(x => x.topic === t.id).map(tile).join("")}</div>`).join("");
+  }
   let h = cur.length ? `<div class="files">${cur.map(tile).join("")}</div>` : "";
-  // постоянный архив: конспекты и подготовки к сессии, по темам
-  const groups = [...new Set(arc.map(x => x.task_text))];
-  h += groups.map(g => `<div class="ah"><span class="chip">📚 ${esc(g)}</span></div><div class="files">${arc.filter(x => x.task_text === g).map(tile).join("")}</div>`).join("");
+  h += folderTiles(arc, "f");
+  if (!h) h = `<section class="glass card">${empty("📎", "Файлов пока нет")}</section>`;
   return h;
 }
 // файлы лежат на сайте планера зашифрованными (e/….bin) и расшифровываются здесь же, ключом из ссылки
@@ -963,8 +1005,9 @@ function hud() {
     week: ["две недели вперёд", "Неделя"],
     tasks: [act + " " + pl(act, "активная", "активные", "активных"), "Задачи"],
     sched: ["пары, ВУЦ, преподаватели", "Расписание"],
-    cards: [deck === null ? "колоды для зубрёжки" : "карточки", deck === null || !D ? "Карточки" : esc(D.cards[deck].name)],
-    files: ["материалы к задачам", "Файлы"],
+    cards: [deck !== null ? (D.cards[deck].topic_name ? esc(D.cards[deck].subject_name + " · " + D.cards[deck].topic_name) : "карточки") : cfold ? "папка" : "колоды для зубрёжки",
+      deck !== null && D ? esc(D.cards[deck].name) : cfold && D ? esc((D.cards.find(d => d.subject === cfold) || {}).subject_name || "Папка") : "Карточки"],
+    files: [ffold ? "папка" : "материалы к задачам и архив", ffold && D ? esc((D.files.find(f => f.subject === ffold) || {}).subject_name || "Папка") : "Файлы"],
   }[tab];
   return `<div class="row"><div><div class="eyebrow">${H[0]}</div><h1 class="title">${H[1]}</h1></div>${k ? `<span class="chip">${wxIcon(k)} ${t !== null ? sgn(t) : WXN[k][1]}</span>` : ""}</div>`;
 }
@@ -1203,7 +1246,7 @@ function render(animate = true) {
   prevTab = tab;
   if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); }
   $("fab").style.display = tab === "tasks" || tab === "today" || tab === "week" ? "grid" : "none";
-  if (tg?.BackButton) (tab === "cards" && deck !== null) ? tg.BackButton.show() : tg.BackButton.hide();
+  if (tg?.BackButton) ((tab === "cards" && (deck !== null || cfold)) || (tab === "files" && ffold)) ? tg.BackButton.show() : tg.BackButton.hide();
   renderQueue();
 }
 function renderQueue() {
@@ -1325,7 +1368,7 @@ document.addEventListener("pointercancel", endGesture);
 
 function cardAct(a) {
   const d = D.cards[deck], n = d.cards.length;
-  if (a === "know") { const k = new Set(store.get("known:" + d.name, [])); k.add(d.cards[cardIdx][0]); store.set("known:" + d.name, [...k]); cardIdx = (cardIdx + 1) % n; haptic("ok"); }
+  if (a === "know") { const k = new Set(store.get(knownKey(d), [])); k.add(d.cards[cardIdx][0]); store.set(knownKey(d), [...k]); cardIdx = (cardIdx + 1) % n; haptic("ok"); }
   else if (a === "again") { d.cards.push(d.cards.splice(cardIdx, 1)[0]); }
   else if (a === "prev") cardIdx = (cardIdx + n - 1) % n;
   else if (a === "shuffle") { d.cards.sort(() => Math.random() - .5); cardIdx = 0; toast("🔀 Перемешано"); }
@@ -1338,7 +1381,8 @@ document.addEventListener("click", e => {
   const el = e.target.closest("button, [data-open], #flip, .toggle");
   if (!el) return;
   const s = el.dataset;
-  if (s.tab) { if (tab !== s.tab) haptic("sel"); tab = s.tab; deck = null; selDay = null; openTask = null; render(); scrollTo({ top: 0 }); return; }
+  if (s.tab) { if (tab !== s.tab) haptic("sel"); tab = s.tab; deck = null; selDay = null; openTask = null; ffold = cfold = null; render(); scrollTo({ top: 0 }); return; }
+  if (s.fold !== undefined) { if (s.fold) { if (s.fk === "c") cfold = s.fold; else ffold = s.fold; haptic("light"); render(); scrollTo({ top: 0 }); } else goBack(); return; }
   if (s.scroll) { $(s.scroll)?.scrollIntoView({ behavior: "smooth", block: "start" }); haptic("sel"); return; }
   if (s.dp !== undefined) { syncChats(+s.dp, true); return; }
   if (s.fp !== undefined) { store.set("focusPage", { d: today(), i: +s.fp }); syncFocus(+s.fp, true); haptic("sel"); return; }
@@ -1381,7 +1425,8 @@ $("fab").onclick = () => { haptic("light"); addSheet(); if (tab === "week" && se
 $("undo").onclick = () => { ops.pop(); store.set("ops", ops); toast("↩︎ Отменено"); render(false); };
 $("send").onclick = sendOps;
 if (tg?.MainButton) tg.MainButton.onClick(sendOps);
-if (tg?.BackButton) tg.BackButton.onClick(() => { deck = null; render(); });
+if (tg?.BackButton) tg.BackButton.onClick(() => { goBack(); });
+function goBack() { if (tab === "cards" && deck !== null) deck = null; else if (tab === "cards") cfold = null; else ffold = null; haptic("sel"); render(); scrollTo({ top: 0 }); }
 
 // шапка мягко уходит при прокрутке, сверху появляется компактная полоса
 addEventListener("scroll", () => {
