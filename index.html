@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041624">
+<meta name="app-v" content="202610041627">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,6 +44,9 @@ body {
   padding-top: var(--safe-top); padding-bottom: calc(128px + env(safe-area-inset-bottom));
 }
 button { font: inherit; color: inherit; cursor: pointer; }
+/* всё, что въезжает сбоку (анимации, свайпы), обрезаем по краю экрана: иначе страница на миг
+   становится шире, Telegram перестраивает окно и нижняя панель уезжает вниз */
+.wrap { overflow-x: hidden; overflow-x: clip; }
 button:disabled { cursor: default; }
 
 /* ---------- сцена: небо Москвы ---------- */
@@ -375,8 +378,8 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 <svg class="skyline" id="skyline" viewBox="0 0 400 120" preserveAspectRatio="xMidYMax slice"></svg></div>
 <canvas id="sky"></canvas><div class="flash" id="flash"></div><div class="vig"></div><div class="grain"></div>
 <div class="topbar" id="topbar"></div>
-<header class="hud" id="hud"></header>
-<main id="main"><div class="glass sk"></div><div class="glass sk" style="height:96px"></div><div class="glass sk" style="height:220px"></div></main>
+<div class="wrap"><header class="hud" id="hud"></header>
+<main id="main"><div class="glass sk"></div><div class="glass sk" style="height:96px"></div><div class="glass sk" style="height:220px"></div></main></div>
 
 <div class="queue" id="queue"><span class="n" id="qn"></span><span id="qtext"></span><button class="u" id="undo">Отменить</button><button class="s" id="send">Отправить</button></div>
 <button class="fab" id="fab" aria-label="Новая задача"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
