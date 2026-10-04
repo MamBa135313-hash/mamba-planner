@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610041651">
+<meta name="app-v" content="202610041656">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -382,11 +382,15 @@ textarea { min-height: 90px; resize: vertical; font-size: 16px; }
 .qa b { display: block; font-size: 13px; font-weight: 800; }
 .qa small { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-3); margin-top: 1px; }
 .dg { padding: 12px 18px 13px; }
-.dg + .dg { border-top: 1px solid var(--stroke); }
 .dg b { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; }
 .dg b::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
 .dg p { margin: 5px 0 0 16px; font-size: 14px; line-height: 1.45; font-weight: 600; color: var(--text-2); }
-.dgmore { display: block; width: calc(100% - 24px); margin: 0 12px 12px; justify-content: center; text-align: center; }
+.dpages { display: flex; align-items: flex-start; transition: height .4s var(--ease); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.dpages::-webkit-scrollbar { display: none; }
+.dpages .dg { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; }
+.ddots { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; padding: 2px 16px 14px; }
+.ddots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 4px; background: var(--stroke-2); transition: width .35s var(--spring), background .3s; }
+.ddots button.on { width: 22px; background: var(--c); box-shadow: 0 0 10px var(--c); }
 /* ---------- движение ---------- */
 .anim > * { animation: rise .65s var(--ease) both; }
 .anim > *:nth-child(2) { animation-delay: .05s } .anim > *:nth-child(3) { animation-delay: .1s } .anim > *:nth-child(4) { animation-delay: .15s }
@@ -620,6 +624,21 @@ function syncFocus(i, smooth) {
   el.scrollTo({ left: i * el.clientWidth, behavior: smooth ? "smooth" : "auto" });
   document.querySelectorAll(".fsw button").forEach((b, k) => b.classList.toggle("on", k === i));
 }
+function syncChats(i, smooth) {
+  const el = $("dpages"); if (!el) return;
+  chatIdx = Math.min(i, el.childElementCount - 1);
+  el.scrollTo({ left: chatIdx * el.clientWidth, behavior: smooth ? "smooth" : "auto" });
+  document.querySelectorAll(".ddots button").forEach((b, k) => b.classList.toggle("on", k === chatIdx));
+  fitChats(el, chatIdx);
+}
+// высота карусели — по открытой беседе, без пустоты под коротким пересказом
+function fitChats(el, i) { const c = el.children[i]; if (c) el.style.height = c.offsetHeight + "px"; }
+document.addEventListener("scroll", e => {
+  if (e.target.id !== "dpages") return;
+  const i = Math.round(e.target.scrollLeft / e.target.clientWidth);
+  if (i !== chatIdx) { chatIdx = i; haptic("sel"); fitChats(e.target, i); }
+  document.querySelectorAll(".ddots button").forEach((b, k) => b.classList.toggle("on", k === i));
+}, true);
 document.addEventListener("scroll", e => {
   if (e.target.id !== "fpages") return;
   const el = e.target, i = Math.round(el.scrollLeft / el.clientWidth);
@@ -647,7 +666,7 @@ function tiles(L, T) {
 
 // ---------- экраны ----------
 // сводка по чатам из последней утренней/вечерней сводки бота; сверху — цитата дня
-let chatsOpen = false;
+let chatIdx = 0; // какая беседа открыта в карусели
 function chatCard() {
   const g = D.digest;
   if (!g) return "";
@@ -658,9 +677,9 @@ function chatCard() {
     h += `<div class="quote"><span class="qm">“</span><div class="ql">💎 Цитата дня</div><div class="qt">${esc(q.text)}</div>
       <div class="qa"><span class="av" style="--c:${col(who)}">${ini}</span><div><b>${esc(q.author || "")}</b><small>${esc(q.chat || "")}${q.time ? " · " + esc(q.time) : ""}</small></div></div></div>`;
   }
-  const C = g.chats, show = chatsOpen ? C : C.slice(0, 3);
-  h += show.map(c => `<div class="dg" style="--c:${col(c.name)}"><b>${esc(c.name)}</b><p>${esc(c.text)}</p></div>`).join("");
-  if (C.length > 3) h += `<button class="btn ghost dgmore" data-chats="1">${chatsOpen ? "Свернуть" : "Ещё " + (C.length - 3) + " " + pl(C.length - 3, "чат", "чата", "чатов")}</button>`;
+  const C = g.chats;
+  if (C.length) h += `<div class="dpages" id="dpages">${C.map(c => `<div class="dg" style="--c:${col(c.name)}"><b>${esc(c.name)}</b><p>${esc(c.text)}</p></div>`).join("")}</div>`;
+  if (C.length > 1) h += `<div class="ddots">${C.map((c, i) => `<button data-dp="${i}" aria-label="${esc(c.name)}" style="--c:${col(c.name)}"></button>`).join("")}</div>`;
   return card("💬 В чатах", g.when ? "сводка: " + esc(g.when) : "", h, "var(--grad-hot)").replace("<section ", '<section id="chatcard" ');
 }
 
@@ -1033,7 +1052,7 @@ function render(animate = true) {
   main.className = animate ? "anim" + (prevTab && prevTab !== tab ? (i > j ? " slide-r" : " slide-l") : "") : "";
   main.innerHTML = V() + `<div class="foot"><span>обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
   prevTab = tab;
-  if (tab === "today") syncFocus(focusPage(), false);
+  if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); }
   $("fab").style.display = tab === "tasks" || tab === "today" || tab === "week" ? "grid" : "none";
   if (tg?.BackButton) (tab === "cards" && deck !== null) ? tg.BackButton.show() : tg.BackButton.hide();
   renderQueue();
@@ -1161,7 +1180,7 @@ document.addEventListener("click", e => {
   const s = el.dataset;
   if (s.tab) { if (tab !== s.tab) haptic("sel"); tab = s.tab; deck = null; selDay = null; openTask = null; render(); scrollTo({ top: 0 }); return; }
   if (s.scroll) { $(s.scroll)?.scrollIntoView({ behavior: "smooth", block: "start" }); haptic("sel"); return; }
-  if (s.chats) { chatsOpen = !chatsOpen; haptic("sel"); render(false); return; }
+  if (s.dp !== undefined) { syncChats(+s.dp, true); return; }
   if (s.fp !== undefined) { store.set("focusPage", { d: today(), i: +s.fp }); syncFocus(+s.fp, true); haptic("sel"); return; }
   if (s.go) { const [t, f] = s.go.split(":"); haptic("sel"); tab = t; if (f) filter = f; deck = null; selDay = null; render(); scrollTo({ top: 0 }); return; }
   if (s.done) { el.classList.add("pop"); markDone(+s.done, el); return; }
