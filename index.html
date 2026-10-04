@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610042122">
+<meta name="app-v" content="202610042125">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -993,7 +993,7 @@ function calTiles(dir = 0) {
   if (sel) anim(sel, [{ opacity: 0, transform: `${tf(sel)} scale(.6)` }, { opacity: 1, transform: `${tf(sel)} scale(1)` }], { duration: 560, delay: dir ? so * 38 + 110 : 50, easing: POP });
 }
 function calIntro() {
-  const m = $("main").classList; calBusy(1300);
+  const m = $("main").classList; uiBusy(1300);
   calTiles(0); calStagger($("calbody"), 120, m.contains("slide-r") ? 28 : m.contains("slide-l") ? -28 : 0);
 }
 // «жидкое» выделение дня: тянется к новому дню, стягивается на нём и чуть пружинит; from — растянутое пальцем состояние
@@ -1030,7 +1030,7 @@ function calSelect(ds, dir, drag) {
   dir = dir || (ds > old ? 1 : -1);
   const mon = calMon();
   if (P(ds) < mon || P(ds) >= add(mon, 7)) { selDay = ds; calWeekGo(P(ds) < mon ? -1 : 1, true, drag); return; }
-  selDay = ds; haptic("sel"); calBusy(1300);
+  selDay = ds; haptic("sel"); uiBusy(1300);
   const st = $("cstrip"), body = $("calbody");
   dselGo(st, (P(ds).getDay() + 6) % 7, drag?.sx != null ? { x: drag.sx, w: drag.sw, sy: drag.sy } : null);
   st.querySelectorAll(".day").forEach(b => {
@@ -1057,7 +1057,7 @@ function calWeekGo(step, keepSel, drag) {
   if (step === 0 && calWeek === 0) return;
   calWeek = step === 0 ? 0 : calWeek + step;
   if (!keepSel) selDay = null;
-  haptic("sel"); calBusy(1700);
+  haptic("sel"); uiBusy(1700);
   const st = $("cstrip"), body = $("calbody"), bx = drag?.bx || 0;
   const tiles = st ? [...st.querySelectorAll(".day, .dsel")] : [];
   const outs = [
@@ -1624,12 +1624,13 @@ async function refreshWeather() {
   W = (await liveWeather()) || W || D?.weather || null;
   applySky(); if (!D) renderHud(false); else quietRender(() => !G);
 }
-// фоновая перерисовка (погода, минутный тик) не обрывает анимацию календаря — дожидается её конца
-let calAnimTill = 0;
-const calBusy = ms => { calAnimTill = Math.max(calAnimTill, Date.now() + ms); };
+// фоновая перерисовка (погода, минутный тик) не обрывает анимацию календаря и не дёргает свайп или прокрутку — ждёт, пока всё затихнет
+let busyTill = 0;
+const uiBusy = ms => { busyTill = Math.max(busyTill, Date.now() + ms); };
+document.addEventListener("scroll", () => uiBusy(450), { capture: true, passive: true });
 function quietRender(ok) {
   clearTimeout(quietRender.t);
-  if (tab === "cal" && Date.now() < calAnimTill) { quietRender.t = setTimeout(() => quietRender(ok), calAnimTill - Date.now() + 60); return; }
+  if (Date.now() < busyTill) { quietRender.t = setTimeout(() => quietRender(ok), busyTill - Date.now() + 60); return; }
   if (ok()) render(false);
 }
 
@@ -1684,9 +1685,10 @@ function render(animate = true) {
   const i = TABS.findIndex(x => x[0] === tab), j = TABS.findIndex(x => x[0] === prevTab);
   const main = $("main");
   main.className = animate ? "anim" + (prevTab && prevTab !== tab ? (i > j ? " slide-r" : " slide-l") : "") : "";
+  const sx = !animate && main.querySelector(".tkts")?.scrollLeft;
   main.innerHTML = V() + `<div class="foot"><span>обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
   prevTab = tab;
-  if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); }
+  if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); if (sx) { const k = main.querySelector(".tkts"); if (k) k.scrollLeft = sx; } }
   if (tab === "cal" && animate) calIntro();
   $("fab").style.display = tab === "tasks" || tab === "today" || tab === "cal" ? "grid" : "none";
   if (tg?.BackButton) ((tab === "cards" && (study || deck !== null || cfold)) || (tab === "files" && ffold)) ? tg.BackButton.show() : tg.BackButton.hide();
