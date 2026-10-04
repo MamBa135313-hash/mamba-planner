@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610042233">
+<meta name="app-v" content="202610042243">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -263,6 +263,10 @@ main { max-width: 640px; margin: 0 auto; padding: 6px 14px 0; }
 .due.soon { background: rgba(139,123,255,.16); color: #c0b6ff; }
 .light .due.soon { color: #5b4bf0; } .light .due.warn { color: #b06d00; }
 .task.done .due { opacity: .4; }
+.task.past .tb, .task.past .chk { opacity: .55; }
+.task.past .tt { color: var(--text-2); }
+.due.past { background: var(--stroke); color: var(--text-3); }
+.tkt.past { opacity: .6; }
 
 /* ---------- дни, фильтры ---------- */
 .days { display: flex; gap: 8px; overflow-x: auto; margin: 0 -14px; padding: 6px 14px 12px; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding: 0 14px; }
@@ -763,8 +767,8 @@ const empty = (e, t) => `<div class="empty"><b>${e}</b>${t}</div>`;
 
 function dueEl(t) {
   if (!t.date) return `<div class="due"><b>∞</b><small>без срока</small></div>`;
+  if (isPast(t)) return `<div class="due past"><b>–</b><small>прошло</small></div>`;
   const n = diff(t.date);
-  if (n < 0) return `<div class="due hot"><b>!</b><small>прошло</small></div>`;
   if (n === 0) return `<div class="due hot"><b class="${t.time ? "s" : ""}">${t.time || "!"}</b><small>сегодня</small></div>`;
   return `<div class="due ${n === 1 ? "warn" : n <= 3 ? "soon" : ""}"><b>${n}</b><small>${pl(n, "день", "дня", "дней")}</small></div>`;
 }
@@ -776,7 +780,7 @@ function taskEl(t) {
   if (t.imp) meta.push('<span class="pill hot">❗️ важно</span>');
   if (t.files?.length) meta.push(`<span class="pill acc">📎 ${t.files.length}</span>`);
   if (t.pend) meta.push(t.pend === "s" ? '<span class="pill ok">отправлено</span>' : '<span class="pill ok">ждёт отправки</span>');
-  return `<div class="task ${t.done ? "done" : ""} ${openTask === t.id ? "open" : ""}">
+  return `<div class="task ${t.done ? "done" : ""} ${isPast(t) ? "past" : ""} ${openTask === t.id ? "open" : ""}">
     ${sw ? `<div class="rev l"><span>✓ Сделано</span></div><div class="rev r"><span>${t.date ? "⏰ Завтра" : "📅 Срок"}</span></div>` : ""}
     <div class="tk" data-open="${t.id}" ${sw ? `data-sw="${id}"` : ""}>
       <button class="chk" ${sw ? "" : "disabled"} data-done="${id}" aria-label="Сделано"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
@@ -940,7 +944,10 @@ function chatCard() {
 
 // лента дедлайнов на главной: мини-карточки с кольцом-таймером, листаются вбок; нажатие — шторка задачи
 const leftMin = t => diff(t.date) * 1440 + mins(t.time || "23:59") - nowMin();
-const ucol = m => m <= 0 ? "#ff4d6d" : m < 1440 ? "#ff6b6b" : m < 4320 ? "#ffa94d" : "#8b7bff";
+// прошедшая — срок (время, а без времени — конец дня) уже наступил, а задача не отмечена: она серая, в конце списков и не в счётчиках
+// (на следующий день бот удаляет её сам)
+const isPast = t => !!t.date && !t.done && leftMin(t) <= 0;
+const ucol = m => m <= 0 ? "#8a8fab" : m < 1440 ? "#ff6b6b" : m < 4320 ? "#ffa94d" : "#8b7bff";
 function cdown(m) {
   if (m <= 0) return ["!", "прошло"];
   if (m < 60) return [m, "мин"];
@@ -949,15 +956,15 @@ function cdown(m) {
 }
 function ticket(t, lead) {
   const m = leftMin(t), [n, u] = cdown(m), C = 2 * Math.PI * 19, pct = m <= 0 ? 1 : 1 - Math.min(m, 10080) / 10080;
-  return `<button class="tkt ${lead ? "lead" : ""}" data-tkt="${t.id}" style="--uc:${ucol(m)}">
+  return `<button class="tkt ${lead ? "lead" : ""} ${m <= 0 ? "past" : ""}" data-tkt="${t.id}" style="--uc:${ucol(m)}">
     <div class="tr"><svg viewBox="0 0 46 46"><circle class="bg" cx="23" cy="23" r="19"/><circle class="fg" cx="23" cy="23" r="19" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct)).toFixed(1)}"/></svg><b>${n}</b></div>
     <span class="tu">${u}<small>${relTxt(t.date)}</small></span>${t.imp ? '<i class="ti">❗️</i>' : ""}${t.pend ? '<i class="pd"></i>' : ""}
     <div class="tx">${esc(t.text)}</div>
     <div class="tf">${typeof t.id === "number" ? "#" + t.id + " · " : ""}${short(t.date)}${t.time ? " · " + t.time : ""}</div></button>`;
 }
 function dlStrip(T) {
-  const L = T.filter(t => t.date && diff(t.date) <= 7);
-  const all = `<button class="lnk" data-go="tasks">все ${T.length} →</button>`;
+  const L0 = T.filter(t => t.date && diff(t.date) <= 7), L = [...L0.filter(t => !isPast(t)), ...L0.filter(isPast)];
+  const all = `<button class="lnk" data-go="tasks">все ${T.filter(t => !isPast(t)).length} →</button>`;
   if (!L.length) return card("Дедлайны", all, empty("🧘", "На неделю вперёд пусто"), "var(--grad-sun)");
   const rest = T.length - L.length;
   const nd = T.find(t => t.date && leftMin(t) > 0);
@@ -1006,9 +1013,10 @@ function dayStrip(start, count, sel, tasksL, seven) {
 function vTasks() {
   const all = tasks();
   const F = { all: ["Все", t => !t.done], imp: ["❗️ Важные", t => !t.done && t.imp], soon: ["≤ 3 дня", t => !t.done && t.date && diff(t.date) <= 3], nodate: ["Без срока", t => !t.done && !t.date], files: ["📎 С файлами", t => !t.done && t.files?.length] };
-  const list = all.filter(F[filter][1]);
-  let h = `<div class="seg"><i class="segi"></i>${Object.entries(F).map(([k, [n, f]]) => { const c = all.filter(f).length; return `<button class="${filter === k ? "on" : ""}" data-filter="${k}">${n}${c ? `<b>${c}</b>` : ""}</button>`; }).join("")}</div>`;
+  const cur = all.filter(t => !isPast(t)), list = cur.filter(F[filter][1]), past = all.filter(t => isPast(t) && F[filter][1](t));
+  let h = `<div class="seg"><i class="segi"></i>${Object.entries(F).map(([k, [n, f]]) => { const c = cur.filter(f).length; return `<button class="${filter === k ? "on" : ""}" data-filter="${k}">${n}${c ? `<b>${c}</b>` : ""}</button>`; }).join("")}</div>`;
   h += card(F[filter][0], list.length, list.length ? taskList(list) : empty("🎉", "Здесь пусто"));
+  if (past.length) h += card("Прошло", "бот уберёт завтра", taskList(past), "var(--text-3)");
   const done = all.filter(t => t.done);
   if (done.length) h += card("Отмечено", done.every(t => t.pend === "s") ? "отправлено боту" : "уйдёт боту", taskList(done), "var(--grad-ok)");
   if (D.regular.length) h += card("🔁 Регулярно", "", D.regular.map(r => `<div class="ls" style="--c:var(--accent-2);grid-template-columns:24px 1fr;padding-left:14px"><div class="rail"><i style="top:14px"></i></div><div class="b" style="font-weight:700">${esc(r)}</div></div>`).join(""), "var(--accent-2)");
@@ -1811,7 +1819,7 @@ function brief() {
   else if (!L.some(l => mins(l.e) > m)) c.push("🎓 пары позади");
   else c.push(`🎓 ${pairs.length} ${pl(pairs.length, "пара", "пары", "пар")} · до ${L[L.length - 1].e}`);
   if (L.some(l => l.vuc)) c.push("🎖 ВУЦ");
-  const dd = T.filter(t => t.date === t0).length;
+  const dd = T.filter(t => t.date === t0 && !isPast(t)).length;
   if (dd) c.push(`🔥 ${dd} ${pl(dd, "дедлайн", "дедлайна", "дедлайнов")} сегодня`);
   else { const nd = T.find(t => t.date && t.date > t0); if (nd) c.push(`⏳ #${nd.id} ${relTxt(nd.date)}`); }
   const d = P(t0), bd = D.birthdays.filter(b => b.d === d.getDate() && b.m === d.getMonth() + 1);
@@ -1830,7 +1838,7 @@ function hud() {
       ${k ? `<div class="wx" data-wxs="1"><div class="temp">${t !== null ? sgn(t) : wxIcon(k)}</div><div class="cond">${wxIcon(k)} ${WXN[k][1]}</div>${W ? `<div class="feel">ощущается ${sgn(Math.round(W.feels))} · ${Math.round(W.wind / 3.6)} м/с</div>` : ""}${sun ? `<div class="feel">${sun}</div>` : ""}</div>` : ""}</div>
       <div class="date">${WDL[n.getDay()]}, ${nice(today())}</div>${brief()}`;
   }
-  const act = D ? tasks().filter(t => !t.done).length : 0;
+  const act = D ? tasks().filter(t => !t.done && !isPast(t)).length : 0;
   const H = {
     cal: ["пары, дедлайны, дни рождения", "Календарь"],
     tasks: [act + " " + pl(act, "активная", "активные", "активных"), "Задачи"],
@@ -2124,7 +2132,7 @@ function moveSheet(id) {
 function renderNav() {
   const nav = $("nav");
   if (!nav.childElementCount) nav.innerHTML = '<i class="ind"></i>' + TABS.map(([k, n]) => `<button class="nb" data-tab="${k}">${IC[k]}<span>${n}</span><em class="dot"></em></button>`).join("");
-  const act = D ? tasks().filter(t => !t.done) : [], td = today();
+  const act = D ? tasks().filter(t => !t.done && !isPast(t)) : [], td = today();
   const badge = { today: act.filter(t => t.date && t.date <= td).length, tasks: act.filter(t => t.imp).length, cards: D ? (D.cards || []).reduce((n, d) => n + deckStats(d).due, 0) : 0 };
   nav.querySelectorAll(".nb").forEach(b => { b.classList.toggle("on", b.dataset.tab === tab); b.querySelector(".dot").textContent = badge[b.dataset.tab] || ""; });
   nav.style.setProperty("--i", TABS.findIndex(x => x[0] === tab));
