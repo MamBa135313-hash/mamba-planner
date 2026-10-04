@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610050157">
+<meta name="app-v" content="202610050216">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -716,7 +716,9 @@ const store = {
 let ops = store.get("ops", []);
 // отправленные боту изменения: показываем их, пока бот их не применит (он разбирает их раз в час) — иначе после отправки задача «возвращалась»
 let sent = store.get("sent", []);
-const haptic = (t = "light") => { try { t === "sel" ? tg.HapticFeedback.selectionChanged() : t === "ok" || t === "error" ? tg.HapticFeedback.notificationOccurred(t === "ok" ? "success" : "error") : tg.HapticFeedback.impactOccurred(t); } catch (e) {} };
+// "tick" — переход на соседнюю вкладку при ведении по меню: на iPhone — чёткий щелчок выбора; на Android щелчок выбора
+// у многих телефонов почти не ощущается, поэтому там — короткий «тап»
+const haptic = (t = "light") => { try { if (t === "tick") t = tg.platform === "android" ? "medium" : "sel"; t === "sel" ? tg.HapticFeedback.selectionChanged() : t === "ok" || t === "error" ? tg.HapticFeedback.notificationOccurred(t === "ok" ? "success" : "error") : tg.HapticFeedback.impactOccurred(t); } catch (e) {} };
 
 // ---------- время (Москва) ----------
 const msk = () => new Date(Date.now() + (new Date().getTimezoneOffset() + 180) * 60000);
@@ -2410,10 +2412,10 @@ document.addEventListener("pointermove", e => {
     const nav = $("nav"); nav.classList.add("drag"); nav.style.setProperty("--i", Math.max(0, Math.min(TABS.length - 1, G.i0 - G.dx / innerWidth * .9)).toFixed(3));
   } else if (G.k === "week") {
     G.el.style.transform = `translateX(${(G.dx * .45).toFixed(1)}px)`;
-  } else if (G.k === "dock") {   // ~45 px на вкладку: до дальней вкладки — короткое движение большого пальца
-    const i = Math.max(0, Math.min(TABS.length - 1, G.i0 + G.dx / 45)), k = Math.round(i);
+  } else if (G.k === "dock") {   // подложка едет ровно за пальцем: сдвиг на ширину вкладки — переход на соседнюю
+    const i = Math.max(0, Math.min(TABS.length - 1, G.i0 + G.dx / dockStep())), k = Math.round(i);
     G.el.classList.add("drag"); G.el.style.setProperty("--i", i.toFixed(3));
-    if (k !== (G.kk ?? G.i0)) { G.kk = k; haptic("sel"); }
+    if (k !== (G.kk ?? G.i0)) { G.kk = k; haptic("tick"); }
     dockTip(e.clientX, k);
   } else if (G.k === "card") {
     G.el.style.transform = `translateX(${G.dx}px) rotate(${G.dx / 16}deg)`;
@@ -2423,6 +2425,8 @@ document.addEventListener("pointermove", e => {
     const sh = $("sheet"); sh.style.transition = "none"; sh.style.transform = `translateY(${Math.max(0, G.dy)}px)`;
   }
 });
+// ширина одной вкладки в нижнем меню (меню — 6 px отступа с каждой стороны, внутри 5 вкладок поровну)
+const dockStep = () => Math.max(1, ($("nav").clientWidth - 12) / TABS.length);
 // плашка над пальцем: x — где палец, k — вкладка, к которой ближе подложка (на неё и перейдём, если отпустить); null — спрятать
 function dockTip(x, k) {
   const t = $("dtip");
@@ -2457,7 +2461,7 @@ function endGesture(e) {
     const nav = $("nav"), v = Math.abs(g.dx) / Math.max(1, e.timeStamp - g.t0), go = Math.abs(g.dx) > 70 || (Math.abs(g.dx) > 35 && v > .45);
     nav.classList.remove("drag");
     if (g.k === "dock") {
-      const k = Math.max(0, Math.min(TABS.length - 1, Math.round(g.i0 + g.dx / 45)));
+      const k = Math.max(0, Math.min(TABS.length - 1, Math.round(g.i0 + g.dx / dockStep())));
       if (k !== g.i0) goTab(TABS[k][0]); else nav.style.setProperty("--i", g.i0);
     } else if (g.k === "week") {
       if (go) { g.el.style.transform = ""; calWeekGo(g.dx < 0 ? 1 : -1); }
