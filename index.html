@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610052100">
+<meta name="app-v" content="202610052300">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -587,6 +587,8 @@ input[type="date"], input[type="time"] { min-height: 50px; -webkit-appearance: n
 .mode svg { width: 24px; height: 24px; stroke: var(--dc); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 6px; }
 .mode b { font: 600 var(--fs-16)/1.2 var(--serif); }
 .mode span { font-size: var(--fs-12); font-weight: 500; color: var(--text-2); line-height: 1.38; }
+html.off [data-vsend], html.off [data-file], html.off [data-vdl] { display: none !important; }   /* файлы и так с телефона, бота нет */
+.addf { margin: 0 0 12px; }
 .dirsw { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 10px; padding: 4px; border-radius: 99px; background: var(--glass); border: 1px solid var(--stroke-2); backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%); }
 .dirsw button { position: relative; z-index: 1; border: 0; background: transparent; color: var(--text-2); font-size: var(--fs-14); font-weight: 600; padding: 9px 4px; border-radius: 99px; white-space: nowrap; transition: color .3s var(--ease); }
 .dirsw button.on { color: var(--paper-ink); }
@@ -665,6 +667,7 @@ input[type="date"], input[type="time"] { min-height: 50px; -webkit-appearance: n
 // Telegram кэширует страницу: если на сайте новая версия — перезагружаемся на неё
 const APP_V = document.querySelector('meta[name="app-v"]').content;
 function checkVersion(safe = () => true) {
+  if (window.MINI_OFFLINE) return Promise.resolve();   // автономная сборка обновляется через новый APK
   return fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.json()).then(j => {
     const q = new URLSearchParams(location.search);
     if (j.v && j.v !== APP_V && q.get("v") !== j.v && safe()) { q.set("v", j.v); location.replace(location.pathname + "?" + q.toString()); }
@@ -675,6 +678,9 @@ const QS = new URLSearchParams(location.search);
 const tg = window.Telegram && Telegram.WebApp;
 // приложение для Android (папка android/): оно открывает этот же сайт и даёт вибро, «Назад» и отправку в Telegram через MiniNative
 const NATIVE = window.MiniNative || null;
+// автономная сборка (offline/): расписание и колоды вшиты в приложение (MINI_SEED), задачи, свои колоды и файлы — только на телефоне
+const OFFLINE = !!window.MINI_OFFLINE, APPVER = window.MINI_VERSION || "";
+if (OFFLINE) document.documentElement.classList.add("off");
 if (tg) {
   tg.ready(); tg.expand();
   // на телефоне — во весь экран, чтобы небо уходило под статус-бар
@@ -799,12 +805,61 @@ function applyPending() {
 }
 // при возвращении в mini и раз в 10 минут: нет ли нового от бота (и новой версии mini)
 async function refreshData(force) {
+  if (OFFLINE) return;
   if (!D || (!force && Date.now() - fetchedAt < 90e3)) return;
   checkVersion(() => !study && !G && !ops.length && !$("viewer").classList.contains("on") && !$("sheet").classList.contains("on"));
   try {
     const txt = await fetchData();
     if (txt !== dataTxt) showData(await decryptData(txt), txt);
   } catch (e) { offline = true; }
+}
+// ---------- автономная версия: всё, что человек добавил сам, хранится на телефоне ----------
+const udb = () => store.get("offlineDB", null) || { tasks: [], nextId: 1, decks: [], files: [] };
+function offD(u = udb()) {
+  const S = window.MINI_SEED || {};
+  return { v: 1, generated: S.generated || new Date().toISOString(), schedule: S.schedule || { days: {} }, regular: S.regular || [], birthdays: [],
+    tasks: u.tasks, cards: (S.cards || []).concat(u.decks), files: u.files, digest: null, weather: null };
+}
+function saveU(u) { store.set("offlineDB", u); const did = deck !== null && D?.cards?.[deck] ? deckId(D.cards[deck]) : null; D = offD(u); if (did) { const i = D.cards.findIndex(x => deckId(x) === did); deck = i >= 0 ? i : null; } }
+function applyLocal(o) {
+  const u = udb(), t = u.tasks.find(x => x.id === o.id);
+  if (o.op === "add") u.tasks.push({ id: u.nextId++, text: o.text, date: o.date || null, time: o.time || null, imp: !!o.imp, approx: false, bell: false, files: [], src: "" });
+  else if (!t) return;
+  else if (o.op === "done") u.tasks = u.tasks.filter(x => x !== t);
+  else if (o.op === "tmr" && t.date) t.date = iso(add(P(t.date), 1));
+  else if (o.op === "move") { t.date = o.date; if (o.time) t.time = o.time; }
+  else if (o.op === "imp") t.imp = o.value;
+  saveU(u);
+}
+// файлы с телефона — в IndexedDB (localStorage для них мал)
+const idb = () => new Promise((ok, no) => { const q = indexedDB.open("mini-files", 1); q.onupgradeneeded = () => q.result.createObjectStore("f"); q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error); });
+async function idbDo(mode, fn) { const db = await idb(); return new Promise((ok, no) => { const tx = db.transaction("f", mode), r = fn(tx.objectStore("f")); tx.oncomplete = () => ok(r?.result); tx.onerror = () => no(tx.error); }); }
+async function addLocalFiles(list) {
+  const u = udb(); let n = 0;
+  for (const file of list) {
+    const ext = (/\.(\w{2,5})$/.exec(file.name) || [])[1]?.toLowerCase() || (file.type.startsWith("image/") ? "jpg" : "bin");
+    const path = "local/" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + "." + ext;
+    await idbDo("readwrite", st => st.put(file, path));
+    u.files.unshift({ name: file.name, kind: file.type.startsWith("image/") ? "photo" : "doc", path, enc: "local", local: true, task: null, task_text: "" }); n++;
+  }
+  saveU(u); haptic("ok"); toast(n === 1 ? "📎 Файл сохранён на телефоне" : `📎 Сохранено файлов: ${n}`); render(false);
+}
+async function delLocalFile(path) {
+  const u = udb(); u.files = u.files.filter(f => f.path !== path); saveU(u);
+  try { await idbDo("readwrite", st => st.delete(path)); } catch (e) {}
+  haptic("light"); toast("Файл удалён"); render(false);
+}
+// новая колода: «слово — перевод» по строке (как в cards.md), разделитель — тире, двоеточие или таб
+function parseDeck(txt) {
+  return txt.split(/\n/).map(l => l.replace(/^\s*[•\-*\d.)]+\s+/, "").trim()).filter(Boolean)
+    .map(l => { const m = /^(.+?)\s+[—–-]\s+(.+)$/.exec(l) || /^(.+?)\s*[:\t]\s*(.+)$/.exec(l); return m ? [m[1].trim(), m[2].trim()] : null; }).filter(Boolean);
+}
+function deckSheet() {
+  sheet(`<h4>Новая колода</h4><p>Каждая строка — карточка: «слово — перевод». Можно вставить список целиком.</p>
+    <input id="dname" placeholder="Название, например «Unit 2 — лексика»" style="width:100%">
+    <textarea id="dtext" style="min-height:180px" placeholder="to consume — потреблять&#10;similarity — сходство"></textarea>
+    <button class="btn pri go" data-save="deck">Создать</button>`);
+  setTimeout(() => $("dname")?.focus(), 400);
 }
 function tasks() {
   const L = D.tasks.map(t => ({ ...t }));
@@ -890,7 +945,7 @@ const fileChip = f => { const g = fileBy(f.path); return g?.enc ? `<button class
 
 function timeline(ds, due = []) {
   const L = lessons(ds);
-  if (L === null) return empty("📭", "Расписания на этот день нет", `Загружено до ${nice(D.schedule.valid_until)}. Пришли боту новое — скрин, PDF или текст.`);
+  if (L === null) return empty("📭", "Расписания на этот день нет", `Загружено до ${nice(D.schedule.valid_until)}. ${OFFLINE ? "Новое расписание придёт с обновлением приложения." : "Пришли боту новое — скрин, PDF или текст."}`);
   if (!L.length) return empty("🌴", "Пар нет", "Свободный день");
   const isT = ds === today(), nowM = nowMin(), used = new Set();
   return `<div class="tl">${L.map(l => {
@@ -1059,7 +1114,7 @@ function ticket(t, lead) {
 function dlStrip(T) {
   const L0 = T.filter(t => t.date && diff(t.date) <= 7), L = [...L0.filter(t => !isPast(t)), ...L0.filter(isPast)];
   const all = `<button class="lnk" data-go="tasks">Все ${T.filter(t => !isPast(t)).length}${IC.next}</button>`;
-  if (!L.length) return card("Дедлайны", all, empty("🧘", "На неделю вперёд дедлайнов нет", "Новые появятся, когда бот разберёт чаты"));
+  if (!L.length) return card("Дедлайны", all, empty("🧘", "На неделю вперёд дедлайнов нет", OFFLINE ? "Добавь задачу со сроком кнопкой «+»" : "Новые появятся, когда бот разберёт чаты"));
   const rest = T.length - L.length;
   const nd = T.find(t => t.date && leftMin(t) > 0);
   return card("Дедлайны", all, `<div class="tkts">${L.map(t => ticket(t, t === nd)).join("")}${L.every(t => t === nd) ? `<button class="tkt all solo" data-go="tasks"><b>🧘</b>Других дедлайнов на неделе нет</button>` : ""}${rest ? `<button class="tkt all" data-go="tasks"><b>+${rest}</b>${pl(rest, "задача", "задачи", "задач")}<br>позже</button>` : ""}</div>`);
@@ -1109,8 +1164,8 @@ function vTasks() {
   const F = { all: ["Все", t => !t.done], imp: ["❗️ Важные", t => !t.done && t.imp], soon: ["≤ 3 дня", t => !t.done && t.date && diff(t.date) <= 3], nodate: ["Без срока", t => !t.done && !t.date], files: ["📎 С файлами", t => !t.done && t.files?.length] };
   const cur = all.filter(t => !isPast(t)), list = cur.filter(F[filter][1]), past = all.filter(t => isPast(t) && F[filter][1](t));
   let h = `<div class="seg"><i class="segi"></i>${Object.entries(F).map(([k, [n, f]]) => { const c = cur.filter(f).length; return `<button class="${filter === k ? "on" : ""}" data-filter="${k}">${n}${c ? `<b>${c}</b>` : ""}</button>`; }).join("")}</div>`;
-  h += card(F[filter][0], list.length, list.length ? taskList(list) : filter === "all" ? empty("🎉", "Задач нет", "Добавь свою или перешли боту сообщение со сроком", `<button class="btn pri" data-add>${IC.plus}Новая задача</button>`) : empty("🎉", "Здесь пусто", "В этом фильтре задач нет"));
-  if (past.length) h += card("Прошло", "бот уберёт завтра", taskList(past));
+  h += card(F[filter][0], list.length, list.length ? taskList(list) : filter === "all" ? empty("🎉", "Задач нет", OFFLINE ? "Добавь первую кнопкой «+»" : "Добавь свою или перешли боту сообщение со сроком", `<button class="btn pri" data-add>${IC.plus}Новая задача</button>`) : empty("🎉", "Здесь пусто", "В этом фильтре задач нет"));
+  if (past.length) h += card("Прошло", OFFLINE ? "отметь сделанными" : "бот уберёт завтра", taskList(past));
   const done = all.filter(t => t.done);
   if (done.length) h += card("Отмечено", done.every(t => t.pend === "s") ? "отправлено боту" : "уйдёт боту", taskList(done));
   if (D.regular.length) h += card("Регулярно", "", D.regular.map(r => `<div class="ls" style="--c:var(--accent-2);grid-template-columns:24px 1fr;padding-left:14px"><div class="rail"><i style="top:14px"></i></div><div class="b" style="font-weight:700">${esc(r)}</div></div>`).join(""));
@@ -1474,6 +1529,7 @@ function deckScreen(d, i) {
     <button class="glass mode" data-study="test" style="--dc:#ffad4d">${IC.quiz}<b>Проверь себя</b><span>все ${st.total} вразброс, в конце — итог и ошибки</span></button>
     <button class="glass mode" data-study="cram" style="--dc:#7cc8ff">${IC.layers}<b>Все подряд</b><span>все ${st.total} в случайном порядке, без расписания</span></button>
   </div>
+  ${d.user ? `<button class="btn ghost" data-deldeck style="margin:14px auto 0;display:flex">${IC.close}Удалить колоду</button>` : ""}
   <p class="hint">«Знаю» — карточка вернётся через 1 → 3 → 7 → 14 → 30 дней, «Ещё раз» — снова в этом же заходе. Прогресс хранится ${CS ? "в облаке Telegram" : "на этом устройстве"}.</p>`;
 }
 // русская сторона первой (английские подсказки в скобках убираем), ответ — английская
@@ -1615,7 +1671,8 @@ function folderBar(x, items, fk) {
 
 function vCards() {
   const decks = D.cards || [];
-  if (!decks.length) return `<section class="glass card">${empty("🃏", "Колод пока нет", "Напиши боту «сделай карточки по #1» — он соберёт колоду из материалов задачи")}</section>`;
+  const newB = OFFLINE ? `<button class="btn pri big addf" data-newdeck>${IC.cards}Новая колода</button>` : "";
+  if (!decks.length) return newB + `<section class="glass card">${empty("🃏", "Колод пока нет", OFFLINE ? "Создай свою: вставь список «слово — перевод»" : "Напиши боту «сделай карточки по #1» — он соберёт колоду из материалов задачи")}</section>`;
   if (study && (study.unit || decks[deck])) return studyView();
   if (deck === null || !decks[deck]) {
     deck = null; study = null;
@@ -1629,7 +1686,7 @@ function vCards() {
         <div class="decks">${T.map(([d, i]) => deckTile(d, i)).join("")}</div>`;
       }).join("");
     }
-    return (reg.length ? `<div class="decks">${reg.map(([d, i]) => deckTile(d, i)).join("")}</div>` : "") + folderTiles(arc.map(([d]) => d), "c");
+    return newB + (reg.length ? `<div class="decks">${reg.map(([d, i]) => deckTile(d, i)).join("")}</div>` : "") + folderTiles(arc.map(([d]) => d), "c");
   }
   return study ? studyView() : deckScreen(decks[deck], deck);
 }
@@ -1640,11 +1697,16 @@ const ftype = x => x.kind === "photo" ? ["IMG", "#b45cff"] : FT[extOf(x)] || ["F
 const dispName = x => String(x.name || "").replace(/\.\w{2,5}$/, "").replace(/_/g, " ").trim() || x.name;
 function vFiles() {
   const f = D.files || [], cur = f.filter(x => !x.archive && !x.dup), arc = f.filter(x => x.archive); // копии задач, уже лежащие в архиве, не повторяем
+  const tile = x => tileF(x);
+  if (OFFLINE && !ffold) {
+    const addB = `<button class="btn pri big addf" data-fadd>${IC.down}Добавить файл с телефона</button><input type="file" id="fpick" accept="application/pdf,image/*" multiple hidden>`;
+    return addB + (cur.length ? `<div class="files">${cur.map(tile).join("")}</div>` : `<section class="glass card">${empty("📎", "Файлов пока нет", "Добавь PDF или фото — они сохранятся на телефоне и откроются без интернета")}</section>`) + folderTiles(arc, "f");
+  }
   if (!f.length) return `<section class="glass card">${empty("📎", "Файлов пока нет", "Они появятся, когда к задачам прикрепят материалы или бот положит конспекты в архив")}</section>`;
-  const tile = x => { const [n, c] = ftype(x); return `<div class="glass file"><div class="ty" style="--fc:${c}">${n}</div>
-    <div class="fn">${esc(dispName(x))}</div>${x.archive ? "" : `<div class="ft">#${x.task} · ${esc(x.task_text.slice(0, 44))}</div>`}
+  function tileF(x) { const [n, c] = ftype(x); return `<div class="glass file"><div class="ty" style="--fc:${c}">${n}</div>
+    <div class="fn">${esc(dispName(x))}</div>${x.archive || x.local ? "" : `<div class="ft">#${x.task} · ${esc(x.task_text.slice(0, 44))}</div>`}
     <div class="fbtns">${x.enc ? (viewable(x) ? `<button class="btn pri" data-fview="${esc(x.path)}">${IC.eye}Открыть</button>` : `<button class="btn pri" data-fdl="${esc(x.path)}">${IC.down}Сохранить</button>`) : ""}
-      <button class="btn ${x.enc ? "sq" : ""}" data-file="${esc(x.path)}" data-task="${x.task || ""}" ${x.path ? "" : "disabled"} aria-label="В чат">${IC.send}${x.enc ? "" : "В чат"}</button></div></div>`; };
+      ${x.local ? `<button class="btn sq" data-fdel="${esc(x.path)}" aria-label="Удалить">${IC.close}</button>` : `<button class="btn ${x.enc ? "sq" : ""}" data-file="${esc(x.path)}" data-task="${x.task || ""}" ${x.path ? "" : "disabled"} aria-label="В чат">${IC.send}${x.enc ? "" : "В чат"}</button>`}</div></div>`; }
   if (ffold) {
     const A = arc.filter(x => x.subject === ffold);
     return folderBar(A[0], A, "f") + topicsOf(A).map(t => `<div class="ah"><span class="chip">${IC.book}${esc(t.name)}</span></div><div class="files">${A.filter(x => x.topic === t.id).map(tile).join("")}</div>`).join("");
@@ -1665,6 +1727,7 @@ const blobs = {};
 async function fileBlob(f, slot = f.enc) {
   const ck = f.path + "|" + slot;
   if (blobs[ck]) return blobs[ck];
+  if (f.local) { const b = await idbDo("readonly", st => st.get(f.path)); if (!b) throw new Error("нет файла"); return (blobs[ck] = b.type ? b : new Blob([b], { type: MIME[extOf(f)] || "application/octet-stream" })); }
   const r = await fetch(slot, { cache: "force-cache" });
   if (!r.ok) throw new Error("нет файла");
   const buf = new Uint8Array(await r.arrayBuffer());
@@ -1784,7 +1847,7 @@ async function viewFile(f, opt = {}) {
     if (V !== me) return;
     if (b.type === "application/pdf") await openPdf(b, opt.page || 0, me);
     else await openImg(b, me);
-  } catch (e) { if (V === me) vb.innerHTML = `<div class="msg"><b>😕</b>Не удалось открыть — нажми «В чат», бот пришлёт файл</div>`; }
+  } catch (e) { if (V === me) vb.innerHTML = `<div class="msg"><b>😕</b>${OFFLINE ? "Не удалось открыть файл" : "Не удалось открыть — нажми «В чат», бот пришлёт файл"}</div>`; }
   if (V === me) loading(false);
 }
 async function openImg(b, me) {
@@ -1947,9 +2010,9 @@ function hud() {
   const k = wxKind(), t = W ? Math.round(W.temp) : null, m = nowMin();
   if (tab === "today") {
     const hr = Math.floor(m / 60), hi = hr < 5 ? "Доброй ночи" : hr < 12 ? "Доброе утро" : hr < 18 ? "Добрый день" : "Добрый вечер";
-    const name = tg?.initDataUnsafe?.user?.first_name || "Саша", n = msk();
+    const name = OFFLINE ? "" : tg?.initDataUnsafe?.user?.first_name || "Саша", n = msk();
     const sun = W?.sunrise ? `↑${W.sunrise.slice(11, 16)} ↓${W.sunset.slice(11, 16)}` : "";
-    return `<div class="row"><div><div class="greet">${hi}, ${esc(name)}</div><div class="clock" id="clock">${hhmm(m).replace(":", "<i>:</i>")}</div></div>
+    return `<div class="row"><div><div class="greet">${hi}${name ? ", " + esc(name) : ""}</div><div class="clock" id="clock">${hhmm(m).replace(":", "<i>:</i>")}</div></div>
       ${k ? `<div class="wx" data-wxs="1" role="button" aria-label="Погода и пары"><div class="temp">${t !== null ? sgn(t) : wxIcon(k)}</div><div class="cond">${wxIcon(k)} ${WXN[k][1]}</div>${W ? `<div class="feel">ощущается ${sgn(Math.round(W.feels))}, ${Math.round(W.wind / 3.6)} м/с</div>` : ""}${sun ? `<div class="feel">${sun}</div>` : ""}</div>` : ""}</div>
       <div class="date">${cap(WDL[n.getDay()])}, ${nice(today())}</div>${brief()}`;
   }
@@ -2276,7 +2339,7 @@ function quickDates() {
 let draft = {};
 function addSheet() {
   draft = { date: null, time: "", imp: false };
-  sheet(`<h4>Новая задача</h4><p>Бот добавит её в список в ближайший запуск</p>
+  sheet(`<h4>Новая задача</h4><p>${OFFLINE ? "Сохранится на этом телефоне" : "Бот добавит её в список в ближайший запуск"}</p>
     <textarea id="ntext" placeholder="Например: эссе по социологии, 5 страниц"></textarea>
     <label class="f">Срок</label><div class="quick" id="nq">${quickDates().map(([n, ds]) => `<button class="btn" data-qd="${ds}">${n}<small>${WD[P(ds).getDay()].toLowerCase()} ${ddmm(ds)}</small></button>`).join("")}<button class="btn" data-qd="">Без срока<small>—</small></button></div>
     <div class="row2"><div><label class="f">Дата</label><input type="date" id="ndate"></div><div><label class="f">Время</label><input type="time" id="ntime"></div></div>
@@ -2320,7 +2383,7 @@ function render(animate = true) {
   main.className = animate ? "anim" + (prevTab && prevTab !== tab ? (i > j ? " slide-r" : " slide-l") : "") : "";
   main.dataset.tab = tab;
   const keepX = animate ? [] : [".seg", ".tkts"].map(q => [q, main.querySelector(q)?.scrollLeft || 0]);
-  main.innerHTML = V() + `<div class="foot"><span>${offline ? "нет сети · " : ""}обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}</span></div>`;
+  main.innerHTML = V() + `<div class="foot"><span>${offline ? "нет сети · " : ""}${OFFLINE ? "Версия " + esc(APPVER) + " · всё хранится на этом телефоне" : `обновлено ботом ${D.generated.slice(8, 10)}.${D.generated.slice(5, 7)} в ${D.generated.slice(11, 16)}`}</span></div>`;
   prevTab = tab;
   if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); }
   for (const [q, x] of keepX) { const el = x && main.querySelector(q); if (el) el.scrollLeft = x; }
@@ -2341,7 +2404,9 @@ function renderQueue() {
   if (mb) { if (n) { tg.MainButton.setParams({ text: "Отправить боту · " + n, color: PAPER, text_color: "#161b2e" }); tg.MainButton.show(); } else tg.MainButton.hide(); }
 }
 function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1900); }
-function addOp(o, msg) { ops.push(o); store.set("ops", ops); haptic("light"); if (msg) toast(msg); renderSmooth(o.op === "done" ? String(o.id) : null); }
+function addOp(o, msg) {
+  if (OFFLINE) { if (o.op === "send_file") return; applyLocal(o); haptic("light"); if (msg) toast(msg); renderSmooth(o.op === "done" ? String(o.id) : null); return; }
+  ops.push(o); store.set("ops", ops); haptic("light"); if (msg) toast(msg); renderSmooth(o.op === "done" ? String(o.id) : null); }
 // Telegram принимает sendData только от планера, открытого кнопкой на клавиатуре под полем ввода.
 // Из меню (кнопка слева от поля) данные молча отбрасываются — тогда возвращаем изменения в очередь и объясняем.
 // в приложении sendData нет — открываем чат с ботом, где уже набраны те же команды словами; остаётся нажать «Отправить»
@@ -2610,6 +2675,20 @@ document.addEventListener("click", e => {
   if (s.file !== undefined) { addOp({ op: "send_file", path: s.file, task: +s.task || null }, "📩 В чат — придёт после «Отправить боту»"); return; }
   if (s.qd !== undefined) { draft.date = s.qd || null; document.querySelectorAll("#nq .btn").forEach(b => b.classList.toggle("on", b === el)); const di = $("ndate"); if (di) di.value = s.qd; haptic("sel"); return; }
   if (s.tg === "imp") { draft.imp = !draft.imp; $("nimp").classList.toggle("on", draft.imp); haptic("sel"); return; }
+  if (s.newdeck !== undefined) { deckSheet(); return; }
+  if (s.save === "deck") {
+    const name = $("dname").value.trim(), C = parseDeck($("dtext").value);
+    if (!name) { $("dname").focus(); return; }
+    if (!C.length) { toast("Нет ни одной карточки «слово — перевод»"); $("dtext").focus(); return; }
+    const u = udb(); u.decks.push({ name, task: null, cards: C, user: true, id: "u" + Date.now() }); saveU(u);
+    closeSheet(); haptic("ok"); toast(`🃏 Колода «${name}»: ${C.length} ${pl(C.length, "карточка", "карточки", "карточек")}`); deck = D.cards.length - 1; render(); return;
+  }
+  if (s.deldeck !== undefined) {
+    const d = D.cards[deck]; if (!d?.user || !confirm(`Удалить колоду «${d.name}»?`)) return;
+    const u = udb(); u.decks = u.decks.filter(x => x.id !== d.id); deck = null; saveU(u); haptic("light"); render(); return;
+  }
+  if (s.fadd !== undefined) { const i = $("fpick"); i.value = ""; i.onchange = () => i.files.length && addLocalFiles([...i.files]); i.click(); return; }
+  if (s.fdel !== undefined) { const f = fileBy(s.fdel); if (f && confirm(`Удалить «${f.name}» с телефона?`)) delLocalFile(f.path); return; }
   if (s.save === "add") {
     const text = $("ntext").value.trim();
     if (!text) { $("ntext").focus(); return; }
@@ -2684,6 +2763,7 @@ applySky(); renderNav(); renderHud(true);
 requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove("noanim")));
 refreshWeather(); setInterval(refreshWeather, 15 * 60000);
 (async () => {
+  if (OFFLINE) { showData(offD(), ""); return; }
   let cached = null;
   try { cached = localStorage.getItem("dataEnc"); } catch (e) {}
   if (cached) { try { showData(await decryptData(cached), cached); } catch (e) { D = null; } }   // копия от другого ключа или старого формата — просто ждём свежую
