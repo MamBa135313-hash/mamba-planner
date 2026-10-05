@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610051200">
+<meta name="app-v" content="202610052100">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -673,6 +673,8 @@ function checkVersion(safe = () => true) {
 checkVersion();
 const QS = new URLSearchParams(location.search);
 const tg = window.Telegram && Telegram.WebApp;
+// приложение для Android (папка android/): оно открывает этот же сайт и даёт вибро, «Назад» и отправку в Telegram через MiniNative
+const NATIVE = window.MiniNative || null;
 if (tg) {
   tg.ready(); tg.expand();
   // на телефоне — во весь экран, чтобы небо уходило под статус-бар
@@ -730,7 +732,7 @@ let ops = store.get("ops", []);
 let sent = store.get("sent", []);
 // "tick" — переход на соседнюю вкладку при ведении по меню: на iPhone — чёткий щелчок выбора; на Android щелчок выбора
 // у многих телефонов почти не ощущается, поэтому там — короткий «тап»
-const haptic = (t = "light") => { try { if (t === "tick") t = tg.platform === "android" ? "medium" : "sel"; t === "sel" ? tg.HapticFeedback.selectionChanged() : t === "ok" || t === "error" ? tg.HapticFeedback.notificationOccurred(t === "ok" ? "success" : "error") : tg.HapticFeedback.impactOccurred(t); } catch (e) {} };
+const haptic = (t = "light") => { if (NATIVE) { try { NATIVE.haptic(t); } catch (e) {} return; } try { if (t === "tick") t = tg.platform === "android" ? "medium" : "sel"; t === "sel" ? tg.HapticFeedback.selectionChanged() : t === "ok" || t === "error" ? tg.HapticFeedback.notificationOccurred(t === "ok" ? "success" : "error") : tg.HapticFeedback.impactOccurred(t); } catch (e) {} };
 
 // ---------- время (Москва) ----------
 const msk = () => new Date(Date.now() + (new Date().getTimezoneOffset() + 180) * 60000);
@@ -2342,8 +2344,30 @@ function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add(
 function addOp(o, msg) { ops.push(o); store.set("ops", ops); haptic("light"); if (msg) toast(msg); renderSmooth(o.op === "done" ? String(o.id) : null); }
 // Telegram принимает sendData только от планера, открытого кнопкой на клавиатуре под полем ввода.
 // Из меню (кнопка слева от поля) данные молча отбрасываются — тогда возвращаем изменения в очередь и объясняем.
+// в приложении sendData нет — открываем чат с ботом, где уже набраны те же команды словами; остаётся нажать «Отправить»
+function opsText(L) {
+  const dm = d => d ? `${d.slice(8, 10)}.${d.slice(5, 7)}` : "", next = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + 1); return x.toISOString().slice(0, 10); };
+  return "📅 Из приложения:\n" + L.map(o => {
+    if (o.op === "done") return `сделал #${o.id}`;
+    if (o.op === "tmr") { const t = D?.tasks.find(t => t.id === o.id); return t?.date ? `перенеси #${o.id} на ${dm(next(t.date))}` : `перенеси #${o.id} на день позже`; }
+    if (o.op === "move") return `перенеси #${o.id} на ${dm(o.date)}${o.time ? " " + o.time : ""}`;
+    if (o.op === "imp") return `#${o.id} ${o.value ? "важно" : "не важно"}`;
+    if (o.op === "add") return `новая задача: ${o.text}${o.date ? ` — до ${dm(o.date)}${o.time ? " " + o.time : ""}` : ""}${o.imp ? " ❗️" : ""}`;
+    if (o.op === "send_file") return `пришли файл ${o.path} (#${o.task})`;
+    return "";
+  }).filter(Boolean).join("\n");
+}
 function sendOps() {
   if (!ops.length) return;
+  if (NATIVE) {
+    const keep = ops.slice(), now = Date.now(), text = opsText(keep);
+    if (text.length > 4000) { toast("Слишком много изменений сразу — отправь часть"); return; }
+    const rec = keep.filter(o => o.op !== "send_file").map(o => ({ ...o, at: now, ...(o.op === "tmr" ? { from: D?.tasks.find(t => t.id === o.id)?.date } : {}) }));
+    sent = sent.concat(rec); store.set("sent", sent);
+    ops = []; store.set("ops", []); haptic("ok"); render(false);
+    try { NATIVE.openTelegram(text); } catch (e) {}
+    return;
+  }
   const payload = JSON.stringify({ v: 1, ops });
   if (!tg || !tg.platform || tg.platform === "unknown") { toast("Открой планер в Telegram кнопкой «📅 Планер»"); return; }
   if (payload.length > 4000) { tg.showAlert("Слишком много изменений сразу — отправь часть, потом остальное."); return; }
@@ -2611,11 +2635,13 @@ $("send").onclick = sendOps;
 if (tg?.MainButton) tg.MainButton.onClick(sendOps);
 if (tg?.BackButton) tg.BackButton.onClick(() => { goBack(); });
 // кнопка «Назад» Telegram (на Android — и системная «назад»): закрывает сначала просмотр файла, потом шторку, потом папку/колоду
+const backNeeded = () => viewerOn() || sheetOn() || (tab === "cards" && (study || deck !== null || cfold)) || (tab === "files" && ffold);
 function syncBack() {
   if (!tg?.BackButton) return;
-  const need = viewerOn() || sheetOn() || (tab === "cards" && (study || deck !== null || cfold)) || (tab === "files" && ffold);
-  need ? tg.BackButton.show() : tg.BackButton.hide();
+  backNeeded() ? tg.BackButton.show() : tg.BackButton.hide();
 }
+// системная «Назад» в приложении: true — шаг назад сделан внутри планера, false — приложение уходит в фон
+window.miniBack = () => { if (!backNeeded()) return false; goBack(); return true; };
 function segReveal() {
   const seg = document.querySelector("#main .seg"), b = seg?.querySelector("button.on"); if (!b) return;
   const sr = seg.getBoundingClientRect(), br = b.getBoundingClientRect(), l = br.left - sr.left, r = br.right - sr.left;
@@ -2683,6 +2709,7 @@ document.addEventListener("visibilitychange", () => {
   else if (viewerOn() && store.get("lastView", null)) store.set("lastView", { ...store.get("lastView", {}), at: Date.now() });
 });
 try { tg?.onEvent?.("activated", () => refreshData()); } catch (e) {}
+window.miniResume = () => refreshData();   // приложение вернулось на экран
 setInterval(() => { if (!document.hidden) refreshData(); }, 10 * 60000);
 </script>
 </body>
