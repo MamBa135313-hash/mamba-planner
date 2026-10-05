@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610052320">
+<meta name="app-v" content="202610052350">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -443,6 +443,35 @@ nav.dock { touch-action: none; }
 .vz .col { display: flex; flex-direction: column; align-items: flex-start; gap: calc(10px * var(--z, 1)); padding: 4px 0 calc(10px * var(--z, 1)); }
 .vz canvas { display: block; flex: none; border-radius: 6px; box-shadow: 0 16px 30px -14px #000; background: #fff; }
 .vbody .msg { padding-top: 26vh; }
+.viewer.deck .vbody { overflow: hidden; }
+.dk { position: relative; height: 100%; overflow: hidden; touch-action: none; }
+.dkth { touch-action: pan-x; } .dkn { touch-action: pan-y; }
+.dkt { position: absolute; left: 0; top: 0; width: 100%; will-change: transform; }
+.dks { position: absolute; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 24px 48px -18px #000, 0 0 0 1px rgba(255,255,255,.06); transform-origin: 50% 50%; }
+.dkz { width: 100%; height: 100%; transform-origin: 50% 50%; }
+.dkin { width: 100%; height: 100%; overflow: hidden; }
+.dkh { position: absolute; right: 8px; top: 8px; padding: 3px 8px; border-radius: 99px; background: rgba(0,0,0,.55); color: #fff; font: 600 11px var(--sans); }
+.dkerr { display: grid; place-items: center; height: 100%; color: #6b7090; font: 14px var(--sans); }
+.dk.zoomed .dks { overflow: visible; }
+.dkth { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; overflow-x: auto; padding: 10px 14px 6px; scrollbar-width: none; transition: transform .3s var(--ease), opacity .3s; }
+.dkth::-webkit-scrollbar { display: none; }
+.dktb { flex: none; border: 0; padding: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-3); font: 600 11px var(--sans); }
+.dkti { border-radius: 5px; overflow: hidden; background: #fff; opacity: .55; outline: 2px solid transparent; outline-offset: 1px; transition: opacity .25s, outline-color .25s, transform .25s var(--spring); }
+.dktb.on .dkti { opacity: 1; outline-color: var(--paper); transform: translateY(-2px); } .dktb.on { color: var(--text); }
+.dkn { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 3; max-height: 42%; overflow-y: auto; padding: 14px 16px; border-radius: 18px; background: rgba(20,24,40,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--stroke-2);
+  transform: translateY(120%); opacity: 0; transition: transform .38s var(--spring), opacity .25s; pointer-events: none; }
+.dkn b { display: block; font: 600 var(--fs-12) var(--sans); color: var(--text-3); margin-bottom: 6px; } .dkn p { margin: 0; white-space: pre-wrap; font-size: var(--fs-14); line-height: 1.45; color: var(--text); }
+.viewer.notes .dkn { transform: none; opacity: 1; pointer-events: auto; }
+.viewer.bare .vtop, .viewer.bare .vbar, .viewer.bare .dkth { opacity: 0; pointer-events: none; }
+.viewer.bare .dkth { transform: translateY(20px); }
+.viewer .vtop, .viewer .vbar { transition: opacity .3s; }
+.viewer.full { background: #000 !important; padding: 0 !important; }
+.viewer.full .vtop, .viewer.full .vbar, .viewer.full .dkth { display: none; }
+.viewer.full .dks { border-radius: 0; box-shadow: none; }
+.dkhud { position: absolute; top: calc(10px + var(--safe-top)); right: calc(12px + env(safe-area-inset-right, 0px)); z-index: 4; display: flex; align-items: center; gap: 10px; opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .25s, transform .3s var(--spring); }
+.dkhud span { padding: 7px 12px; border-radius: 99px; background: rgba(0,0,0,.6); color: #fff; font: 600 var(--fs-14)/1 var(--sans); font-variant-numeric: tabular-nums; }
+.dkhud .btn { background: rgba(0,0,0,.6); color: #fff; padding: 9px 14px; }
+.viewer.full.hud .dkhud { opacity: 1; pointer-events: auto; transform: none; }
 .vdoc { margin: 6px 12px 20px; padding: 22px 18px; border-radius: 10px; background: #fff; color: #1a1d2e; font: 15px/1.5 var(--sans); box-shadow: 0 16px 30px -14px #000; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
 .vdoc h1, .vdoc h2, .vdoc h3 { font-family: var(--serif); line-height: 1.25; margin: 1em 0 .4em; } .vdoc h3:first-child { margin-top: 0; }
 .vdoc p { margin: 0 0 .7em; } .vdoc img { max-width: 100%; height: auto; } .vdoc a { color: #2b59c3; } .vdoc .dim { color: #6b7090; }
@@ -1696,7 +1725,7 @@ function vCards() {
   return study ? studyView() : deckScreen(decks[deck], deck);
 }
 
-const FT = { csv: ["CSV", "#2fbf71"], ods: ["XLS", "#2fbf71"], odt: ["DOC", "#4b8bff"], rtf: ["DOC", "#4b8bff"], pdf: ["PDF", "#ff5d6c"], doc: ["DOC", "#4b8bff"], docx: ["DOC", "#4b8bff"], ppt: ["PPT", "#ff8a3d"], pptx: ["PPT", "#ff8a3d"], xls: ["XLS", "#2fbf71"], xlsx: ["XLS", "#2fbf71"], txt: ["TXT", "#8a8fab"], zip: ["ZIP", "#c08b4a"] };
+const FT = { ppsx: ["PPT", "#ff8a3d"], pptm: ["PPT", "#ff8a3d"], potx: ["PPT", "#ff8a3d"], csv: ["CSV", "#2fbf71"], ods: ["XLS", "#2fbf71"], odt: ["DOC", "#4b8bff"], rtf: ["DOC", "#4b8bff"], pdf: ["PDF", "#ff5d6c"], doc: ["DOC", "#4b8bff"], docx: ["DOC", "#4b8bff"], ppt: ["PPT", "#ff8a3d"], pptx: ["PPT", "#ff8a3d"], xls: ["XLS", "#2fbf71"], xlsx: ["XLS", "#2fbf71"], txt: ["TXT", "#8a8fab"], zip: ["ZIP", "#c08b4a"] };
 const extOf = x => ((/\.(\w{2,5})$/.exec(x.name) || /\.(\w{2,5})$/.exec(x.path || "") || [])[1] || "").toLowerCase();
 const ftype = x => x.kind === "photo" ? ["IMG", "#b45cff"] : FT[extOf(x)] || ["FILE", "#7c6cff"];
 const dispName = x => String(x.name || "").replace(/\.\w{2,5}$/, "").replace(/_/g, " ").trim() || x.name;
@@ -1726,8 +1755,8 @@ const fileBy = path => (D.files || []).find(f => f.path === path);
 const MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", pdf: "application/pdf", txt: "text/plain",
   doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ppt: "application/vnd.ms-powerpoint",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation", xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
-const DOCX = /^docx$/, SHEET = /^(xlsx|xlsm|xls|csv|ods)$/;
-const viewable = f => f.kind === "photo" || extOf(f) === "pdf" || !!f.view || (f.local && (DOCX.test(extOf(f)) || SHEET.test(extOf(f)))); // Word/Excel/PowerPoint — через PDF-копию (f.view); в автономной версии docx и таблицы — прямо здесь
+const DOCX = /^docx$/, SHEET = /^(xlsx|xlsm|xls|csv|ods)$/, DECK = /^(pptx|ppsx|pptm|potx)$/;
+const viewable = f => f.kind === "photo" || extOf(f) === "pdf" || !!f.view || (f.local && (DOCX.test(extOf(f)) || SHEET.test(extOf(f)) || DECK.test(extOf(f)))); // Word/Excel/PowerPoint — через PDF-копию (f.view); в автономной версии docx и таблицы — прямо здесь
 const fname = f => { const e = extOf(f) || (f.kind === "photo" ? "jpg" : "bin"); const n = f.name.replace(/[\\/:*?"<>|«»]/g, "").trim().slice(0, 100) || "file"; return /\.\w{2,5}$/.test(n) ? n : n + "." + e; };
 const blobs = {};
 async function fileBlob(f, slot = f.enc) {
@@ -1839,6 +1868,7 @@ function vSharpen() {
   }, 220);
 }
 function vPage() {
+  if (V?.kind === "deck") return;
   if (!V || V.kind !== "pdf" || !V.canv.length) { $("vpage").textContent = ""; return; }
   const vb = $("vbody"), mid = vb.scrollTop + vb.clientHeight * .35;
   let i = 0; V.canv.forEach((c, k) => { if (c.offsetTop <= mid) i = k; });
@@ -1862,8 +1892,9 @@ async function viewFile(f, opt = {}) {
     if (b.type === "application/pdf") await openPdf(b, opt.page || 0, me);
     else if (f.local && DOCX.test(extOf(f))) await openDocx(b, me);
     else if (f.local && SHEET.test(extOf(f))) await openSheet(b, me);
+    else if (f.local && DECK.test(extOf(f))) await openDeck(b, opt.page || 0, me);
     else await openImg(b, me);
-  } catch (e) { if (V === me) vb.innerHTML = `<div class="msg"><b>😕</b>${OFFLINE ? "Не удалось открыть файл" : "Не удалось открыть — нажми «В чат», бот пришлёт файл"}</div>`; }
+  } catch (e) { if (V === me) { if (V?.kind === "deck") { deckEnd(); V.kind = "img"; } vb.innerHTML = `<div class="msg"><b>😕</b>${OFFLINE ? "Не удалось открыть файл здесь" : "Не удалось открыть — нажми «В чат», бот пришлёт файл"}${f.local ? `<p><button class="btn pri" data-dkopen>${IC.send}Открыть в другом приложении</button></p>` : ""}</div>`; } }
   if (V === me) loading(false);
 }
 // автономная версия: Word (docx) и таблицы показываем как страницу — библиотеки лежат в приложении (lib/)
@@ -1882,6 +1913,186 @@ async function openDocx(b, me) {
 async function openSheet(b, me) {
   const X = await loadLib("xlsx.full.min.js", "XLSX"), wb = X.read(new Uint8Array(await b.arrayBuffer()), { type: "array" });
   docShow(wb.SheetNames.map(n => `${wb.SheetNames.length > 1 ? `<h3>${esc(n)}</h3>` : ""}<div class="vtab">${X.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" })}</div>`).join("") || `<p class="dim">Таблица пустая</p>`, me);
+}
+// ---------- презентации (автономная версия): свой просмотр поверх движка слайдов (lib/deck.js) ----------
+// листание свайпом с пружиной, соседние слайды видны по краям, щипок/двойной тап — зум, тап по краю — следующий/предыдущий,
+// тап по центру — спрятать всё лишнее, лента миниатюр, заметки докладчика, «на весь экран» с поворотом телефона
+const VBAR0 = () => `<button class="btn" data-vclose aria-label="Закрыть">${IC.close}</button><button class="btn pri" data-vdl>${IC.down}Сохранить</button><button class="btn" data-vsend>${IC.send}В чат</button>`;
+async function openDeck(b, page, me) {
+  await loadLib("deck.js", "MiniDeck");
+  if (!document.querySelector('link[href="fonts/office/office.css"]')) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "fonts/office/office.css"; document.head.appendChild(l); }
+  const dk = await MiniDeck.open(await b.arrayBuffer());
+  if (V !== me) { dk.dispose(); return; }
+  if (!dk.count) throw new Error("пусто");
+  try { await document.fonts.load('16px "Calibri"'); await document.fonts.load('bold 16px "Calibri"'); } catch (e) {}
+  page = page || store.get("deckPos", {})[V.f.path] || 0;
+  Object.assign(V, { kind: "deck", dk, i: Math.min(Math.max(0, page), dk.count - 1), z: 1, px: 0, py: 0, full: false, chrome: true, handles: {}, thumbs: {} });
+  const v = $("viewer"), vb = $("vbody"); v.classList.add("deck");
+  const hasNotes = dk.notes.some(Boolean);
+  vb.innerHTML = `<div class="dk" id="dk"><div class="dkt" id="dkt">${Array.from({ length: dk.count }, (_, i) => `<div class="dks" data-i="${i}"><div class="dkz"><div class="dkin"></div></div>${dk.hidden[i] ? '<span class="dkh">скрытый слайд</span>' : ""}</div>`).join("")}</div></div>
+    <div class="dkhud" id="dkhud"><span id="dkc"></span><button class="btn" data-dkfull>${IC.close}Выйти</button></div>
+    <div class="dkn" id="dkn"><b>Заметки</b><p id="dknt"></p></div>
+    <div class="dkth" id="dkth">${Array.from({ length: dk.count }, (_, i) => `<button class="dktb" data-dkt="${i}"><div class="dkti"></div><span>${i + 1}</span></button>`).join("")}</div>`;
+  $("vbar").innerHTML = `<button class="btn" data-vclose aria-label="Закрыть">${IC.close}</button>${hasNotes ? `<button class="btn" data-dknote>${IC.book}Заметки</button>` : ""}<button class="btn pri" data-dkfull>${IC.eye}На весь экран</button><button class="btn sq" data-dkopen aria-label="Открыть в другом приложении">${IC.send}</button>`;
+  deckLayout(); deckGo(V.i, false); deckThumbs();
+  dkGestures();
+}
+function deckEnd() {
+  const v = $("viewer"); v.classList.remove("deck", "full", "bare", "notes", "hud");
+  if (V?.full) try { NATIVE?.orientation?.("portrait"); } catch (e) {}
+  try { Object.values(V.handles).forEach(h => h.dispose()); Object.values(V.thumbs).forEach(h => h.dispose()); V.dk.dispose(); } catch (e) {}
+  removeEventListener("resize", deckResize);
+  $("vbar").innerHTML = VBAR0();
+}
+// размер слайда: по ширине экрана (в портрете с полями, чтобы виднелись соседние) или целиком в экран (во весь экран)
+function deckLayout() {
+  const dk = V.dk, vb = $("vbody"), full = V.full, W = vb.clientWidth, H = vb.clientHeight - (full ? 0 : (V.chrome ? $("dkth").offsetHeight : 0));
+  const k = dk.width / dk.height, gap = full ? 0 : 12;
+  let w = full ? Math.min(W, H * k) : W - 56, h = w / k;   // в портрете по краям выглядывают соседние слайды
+  if (!full && h > H - 20) { h = H - 20; w = h * k; }
+  Object.assign(V, { sw: w, sh: h, step: w + gap, W, H });
+  const t = $("dkt"); t.style.height = H + "px";
+  t.querySelectorAll(".dks").forEach((el, i) => { Object.assign(el.style, { width: w + "px", height: h + "px", left: (W - w) / 2 + i * (w + gap) + "px", top: (H - h) / 2 + "px" }); });
+  for (const [i, hd] of Object.entries(V.handles)) { hd.dispose(); delete V.handles[i]; t.querySelector(`.dks[data-i="${i}"] .dkin`).innerHTML = ""; }
+  deckRender();
+}
+function deckResize() { if (V?.kind === "deck") { deckLayout(); deckGo(V.i, false); } }
+// рисуем текущий и соседние (±2), дальние освобождаем
+function deckRender() {
+  const dk = V.dk, sc = V.sw / dk.width;
+  for (let i = 0; i < dk.count; i++) {
+    const near = Math.abs(i - V.i) <= 2, el = $("dkt").querySelector(`.dks[data-i="${i}"] .dkin`);
+    if (near && !V.handles[i]) { try { V.handles[i] = dk.render(i, el, sc); } catch (e) { el.innerHTML = '<div class="dkerr">Не удалось показать слайд</div>'; } }
+    else if (!near && V.handles[i]) { V.handles[i].dispose(); delete V.handles[i]; el.innerHTML = ""; }
+  }
+}
+function deckGo(i, anim = true) {
+  const dk = V.dk, prev = V.i; i = Math.max(0, Math.min(dk.count - 1, i));
+  V.i = i; deckZoom(1, 0, 0, anim);
+  deckTrack(-i * V.step, anim);
+  $("vpage").textContent = `${i + 1} / ${dk.count}`;
+  $("dknt").textContent = dk.notes[i] || "К этому слайду заметок нет";
+  document.querySelectorAll("#dkth .dktb").forEach((b, k) => b.classList.toggle("on", k === i));
+  const tb = document.querySelector(`#dkth .dktb[data-dkt="${i}"]`); if (tb) tb.scrollIntoView({ behavior: anim && MOTION ? "smooth" : "auto", inline: "center", block: "nearest" });
+  if (anim && prev !== i) haptic("sel");
+  deckRender();
+  $("dkc").textContent = `${i + 1} / ${dk.count}`;
+  if (V.full && anim) deckHud(1200);
+  clearTimeout(deckGo.t); deckGo.t = setTimeout(() => {
+    if (V?.kind !== "deck") return;
+    store.set("lastView", { ...store.get("lastView", {}), page: i, at: Date.now() });
+    const P = store.get("deckPos", {}); P[V.f.path] = i; const K = Object.keys(P); if (K.length > 60) delete P[K[0]]; store.set("deckPos", P);
+  }, 400);
+}
+// лента: соседи чуть меньше и приглушены — глубина; во время свайпа это плавно меняется
+function deckTrack(x, anim, drag) {
+  const t = $("dkt"); V.tx = x;
+  t.style.transition = anim && MOTION ? "transform .42s cubic-bezier(.2,.9,.25,1)" : "none";
+  t.style.transform = `translateX(${x}px)`;
+  const pos = -x / V.step;
+  t.querySelectorAll(".dks").forEach((el, i) => {
+    const d = Math.min(1, Math.abs(i - pos)), sc = V.full ? 1 : 1 - d * .08;
+    el.style.transition = anim && MOTION ? "transform .42s cubic-bezier(.2,.9,.25,1), opacity .42s" : "none";
+    el.style.transform = `scale(${sc})`; el.style.opacity = V.full ? (d < .5 ? 1 : 0) : 1 - d * .45;
+  });
+}
+function deckZoom(z, px, py, anim) {
+  const el = $("dkt")?.querySelector(`.dks[data-i="${V.i}"] .dkz`); if (!el) return;
+  z = Math.max(1, Math.min(4, z));
+  const mx = Math.max(0, (V.sw * z - V.W) / 2 + 12), my = Math.max(0, (V.sh * z - V.H) / 2 + 12);   // край приближенного слайда не уходит дальше края экрана
+  px = Math.max(-mx, Math.min(mx, px)); py = Math.max(-my, Math.min(my, py));
+  Object.assign(V, { z, px, py });
+  el.style.transition = anim && MOTION ? "transform .32s cubic-bezier(.2,.8,.2,1)" : "none";
+  el.style.transform = `translate(${px}px, ${py}px) scale(${z})`;
+  $("dk").classList.toggle("zoomed", z > 1.02);
+}
+// миниатюры рисуем, когда они видны в ленте
+function deckThumbs() {
+  const th = $("dkth"), dk = V.dk, tw = 84, sc = tw / dk.width;
+  th.querySelectorAll(".dkti").forEach(el => { el.style.width = tw + "px"; el.style.height = tw * dk.height / dk.width + "px"; });
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting || !V || V.kind !== "deck") return;
+    const i = +e.target.dataset.dkt; if (V.thumbs[i]) return;
+    try { V.thumbs[i] = dk.render(i, e.target.querySelector(".dkti"), sc); } catch (_) {}
+    io.unobserve(e.target);
+  }), { root: th, rootMargin: "0px 200px" });
+  th.querySelectorAll(".dktb").forEach(b => io.observe(b));
+}
+function deckFull(on) {
+  V.full = on; const v = $("viewer");
+  v.classList.toggle("full", on); v.classList.remove("notes");
+  try { NATIVE?.orientation?.(on ? "landscape" : "portrait"); } catch (e) {}
+  haptic("light");
+  setTimeout(() => { if (V?.kind === "deck") { deckLayout(); deckGo(V.i, false); } }, on && NATIVE?.orientation ? 450 : 30);
+}
+// во весь экран кнопок нет: номер слайда и «Выйти» всплывают на время
+function deckHud(ms) { const v = $("viewer"); v.classList.add("hud"); clearTimeout(deckHud.t); deckHud.t = setTimeout(() => v.classList.remove("hud"), ms); }
+function deckBack() {   // системная «Назад» в презентации: сначала из «на весь экран» и заметок, потом закрыть
+  const v = $("viewer");
+  if (V.full) { deckFull(false); return true; }
+  if (v.classList.contains("notes")) { v.classList.remove("notes"); return true; }
+  return false;
+}
+let dkBound = false;
+function dkGestures() {
+  addEventListener("resize", deckResize);
+  if (dkBound) return; dkBound = true;
+  const vb = $("vbody");
+  let T = null, last = null, tapT = null;
+  const pt = e => ({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  vb.addEventListener("touchstart", e => {
+    if (V?.kind !== "deck" || !e.target.closest("#dk")) return;
+    e.stopPropagation();
+    if (e.touches.length === 2) {
+      const r = $("dkt").querySelector(`.dks[data-i="${V.i}"]`).getBoundingClientRect(), mx = (e.touches[0].clientX + e.touches[1].clientX) / 2, my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      // точка между пальцами относительно центра слайда — то, что под ней, остаётся под пальцами
+      T = { pinch: true, d0: dist(e.touches) || 1, z0: V.z, px0: V.px, py0: V.py, m: { x: mx - (r.left + r.width / 2), y: my - (r.top + r.height / 2) } }; return;
+    }
+    const p = pt(e); T = { x0: p.x, y0: p.y, t0: Date.now(), tx0: V.tx, px0: V.px, py0: V.py, mode: null, dx: 0, dy: 0 };
+  }, { passive: true, capture: true });
+  vb.addEventListener("touchmove", e => {
+    if (V?.kind !== "deck" || !T) return;
+    e.stopPropagation(); e.preventDefault();
+    if (T.pinch && e.touches.length === 2) { const z = Math.max(1, Math.min(4, T.z0 * dist(e.touches) / T.d0)), k = z / T.z0; deckZoom(z, T.m.x - (T.m.x - T.px0) * k, T.m.y - (T.m.y - T.py0) * k, false); return; }
+    if (T.pinch) return;
+    const p = pt(e), dx = p.x - T.x0, dy = p.y - T.y0; T.dx = dx; T.dy = dy;
+    if (!T.mode && Math.hypot(dx, dy) > 8) T.mode = V.z > 1.02 ? "pan" : Math.abs(dx) > Math.abs(dy) ? "swipe" : dy > 0 && !V.full ? "close" : "none";
+    if (T.mode === "pan") deckZoom(V.z, T.px0 + dx, T.py0 + dy, false);
+    else if (T.mode === "swipe") { const edge = (V.i === 0 && dx > 0) || (V.i === V.dk.count - 1 && dx < 0); deckTrack(T.tx0 + (edge ? dx * .3 : dx), false, true); }
+    else if (T.mode === "close") { vb.style.transition = "none"; vb.style.transform = `translateY(${Math.max(0, dy)}px) scale(${1 - Math.min(dy, 400) / 2400})`; $("viewer").style.setProperty("--vo", Math.max(.25, 1 - dy / 420).toFixed(3)); }
+  }, { passive: false, capture: true });
+  const end = e => {
+    if (V?.kind !== "deck" || !T) return;
+    e.stopPropagation();
+    if (T.pinch) { if (e.touches.length < 2) { if (V.z < 1.08) deckZoom(1, 0, 0, true); T = null; } return; }
+    const dt = Math.max(1, Date.now() - T.t0), vx = T.dx / dt;
+    if (T.mode === "swipe") { const n = T.dx < -V.step * .18 || vx < -.45 ? V.i + 1 : T.dx > V.step * .18 || vx > .45 ? V.i - 1 : V.i; deckGo(n); }
+    else if (T.mode === "close") {
+      if (T.dy > 110 || (T.dy / dt > .7 && T.dy > 40)) { haptic("light"); closeViewer(true); }
+      else { vb.style.transition = "transform .35s cubic-bezier(.34,1.4,.64,1)"; vb.style.transform = ""; $("viewer").style.removeProperty("--vo"); }
+    }
+    else if (!T.mode && dt < 300) {   // тап: двойной — зум, одиночный — по краю листает, по центру прячет кнопки
+      const x = T.x0, y = T.y0, now = Date.now();
+      if (last && now - last.t < 300 && Math.hypot(x - last.x, y - last.y) < 40) {
+        clearTimeout(tapT); last = null; haptic("light");
+        const r = $("dkt").querySelector(`.dks[data-i="${V.i}"]`).getBoundingClientRect(), cx = x - (r.left + r.width / 2), cy = y - (r.top + r.height / 2);
+        if (V.z > 1.02) deckZoom(1, 0, 0, true); else deckZoom(2.5, -cx * 1.5, -cy * 1.5, true);
+      } else {
+        last = { x, y, t: now };
+        tapT = setTimeout(() => {
+          last = null; if (V?.kind !== "deck" || V.z > 1.02) return;
+          const W = innerWidth;
+          if (x < W * .28) deckGo(V.i - 1); else if (x > W * .72) deckGo(V.i + 1);
+          else if (V.full) { $("viewer").classList.contains("hud") ? $("viewer").classList.remove("hud") : deckHud(3000); haptic("sel"); }
+          else { $("viewer").classList.toggle("bare"); V.chrome = !$("viewer").classList.contains("bare"); haptic("sel"); }
+        }, 300);
+      }
+    }
+    T = null;
+  };
+  vb.addEventListener("touchend", end, { capture: true });
+  vb.addEventListener("touchcancel", end, { capture: true });
 }
 async function openImg(b, me) {
   const vb = $("vbody"), img = new Image();
@@ -1925,6 +2136,7 @@ function closeViewer(anim) {
   try { localStorage.removeItem("lastView"); } catch (e) {}
   const done = () => {
     v.classList.remove("on"); syncBack(); syncVSwipes();
+    if (V?.kind === "deck") deckEnd();
     setTimeout(() => { if (viewerOn()) return; $("vbody").innerHTML = ""; $("vbody").style.transform = ""; v.style.removeProperty("--vo"); if (V?.doc) try { V.doc.destroy(); } catch (e) {} V = null; }, 320);
   };
   if (anim && MOTION) { const vb = $("vbody"); vb.style.transition = "transform .28s cubic-bezier(.4,0,1,1)"; vb.style.transform = `translateY(${innerHeight * .7}px)`; v.style.setProperty("--vo", 0); setTimeout(done, 200); }
@@ -2704,6 +2916,10 @@ document.addEventListener("click", e => {
   if (s.fdl) { const f = fileBy(s.fdl); if (f) dlFile(f); return; }
   if (s.fview) { const f = fileBy(s.fview); if (f) viewFile(f, { from: (el.closest(".file") || el).getBoundingClientRect() }); return; }
   if (s.vclose !== undefined) { closeViewer(); return; }
+  if (s.dkt !== undefined) { if (V?.kind === "deck") deckGo(+s.dkt); return; }
+  if (s.dknote !== undefined) { $("viewer").classList.toggle("notes"); haptic("sel"); return; }
+  if (s.dkopen !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) dlFile(f); return; }
+  if (s.dkfull !== undefined) { if (V?.kind === "deck") deckFull(!V.full); return; }
   if (s.vdl !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) dlFile(f); return; }
   if (s.vsend !== undefined) { const f = fileBy($("viewer").dataset.path); if (f) { closeViewer(); addOp({ op: "send_file", path: f.path, task: f.task }, "📩 В чат — придёт после «Отправить боту»"); } return; }
   if (s.file !== undefined) { addOp({ op: "send_file", path: s.file, task: +s.task || null }, "📩 В чат — придёт после «Отправить боту»"); return; }
@@ -2769,6 +2985,7 @@ function goTab(t, again) {
   render(); scrollTo({ top: 0 });
 }
 function goBack() {
+  if (viewerOn() && V?.kind === "deck" && deckBack()) return;
   if (viewerOn()) { closeViewer(); haptic("sel"); return; }
   if (sheetOn()) { closeSheet(); haptic("sel"); return; }
   navDir = -1;
@@ -2792,7 +3009,7 @@ function tick() {
 }
 setTimeout(() => { tick(); setInterval(tick, 60000); }, (60 - new Date().getSeconds()) * 1000 + 50);
 
-$("vbar").innerHTML = `<button class="btn" data-vclose aria-label="Закрыть">${IC.close}</button><button class="btn pri" data-vdl>${IC.down}Сохранить</button><button class="btn" data-vsend>${IC.send}В чат</button>`;
+$("vbar").innerHTML = VBAR0();
 applySky(); renderNav(); renderHud(true);
 requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove("noanim")));
 refreshWeather(); setInterval(refreshWeather, 15 * 60000);
