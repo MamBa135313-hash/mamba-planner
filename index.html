@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610052350">
+<meta name="app-v" content="202610060100">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -446,7 +446,7 @@ nav.dock { touch-action: none; }
 .viewer.deck .vbody { overflow: hidden; }
 .dk { position: relative; height: 100%; overflow: hidden; touch-action: none; }
 .dkth { touch-action: pan-x; } .dkn { touch-action: pan-y; }
-.dkt { position: absolute; left: 0; top: 0; width: 100%; will-change: transform; }
+.dkt { position: absolute; left: 0; top: 0; width: 100%; }
 .dks { position: absolute; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 24px 48px -18px #000, 0 0 0 1px rgba(255,255,255,.06); transform-origin: 50% 50%; }
 .dkz { width: 100%; height: 100%; transform-origin: 50% 50%; }
 .dkin { width: 100%; height: 100%; overflow: hidden; }
@@ -468,6 +468,7 @@ nav.dock { touch-action: none; }
 .viewer.full { background: #000 !important; padding: 0 !important; }
 .viewer.full .vtop, .viewer.full .vbar, .viewer.full .dkth { display: none; }
 .viewer.full .dks { border-radius: 0; box-shadow: none; }
+.viewer.deck .vbar { gap: 8px; } .viewer.deck .vbar .btn { white-space: nowrap; padding: 12px 14px; }
 .dkhud { position: absolute; top: calc(10px + var(--safe-top)); right: calc(12px + env(safe-area-inset-right, 0px)); z-index: 4; display: flex; align-items: center; gap: 10px; opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .25s, transform .3s var(--spring); }
 .dkhud span { padding: 7px 12px; border-radius: 99px; background: rgba(0,0,0,.6); color: #fff; font: 600 var(--fs-14)/1 var(--sans); font-variant-numeric: tabular-nums; }
 .dkhud .btn { background: rgba(0,0,0,.6); color: #fff; padding: 9px 14px; }
@@ -727,6 +728,7 @@ const IC = {
   tasks: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="m8 12 3 3 5-6"/></svg>',
   sched: '<svg viewBox="0 0 24 24"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 1.5Zm0 0A2 2 0 0 0 6 21h12"/><path d="M9 7h6M9 11h4"/></svg>',
   cards: '<svg viewBox="0 0 24 24"><rect x="7" y="3" width="13" height="17" rx="3"/><path d="M4 7v11a3 3 0 0 0 3 3h9"/></svg>',
+  expand: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   files: '<svg viewBox="0 0 24 24"><path d="M21 12.5 12.6 21a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L15.6 8.3"/></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   bolt: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>',
@@ -1929,11 +1931,11 @@ async function openDeck(b, page, me) {
   Object.assign(V, { kind: "deck", dk, i: Math.min(Math.max(0, page), dk.count - 1), z: 1, px: 0, py: 0, full: false, chrome: true, handles: {}, thumbs: {} });
   const v = $("viewer"), vb = $("vbody"); v.classList.add("deck");
   const hasNotes = dk.notes.some(Boolean);
-  vb.innerHTML = `<div class="dk" id="dk"><div class="dkt" id="dkt">${Array.from({ length: dk.count }, (_, i) => `<div class="dks" data-i="${i}"><div class="dkz"><div class="dkin"></div></div>${dk.hidden[i] ? '<span class="dkh">скрытый слайд</span>' : ""}</div>`).join("")}</div></div>
+  vb.innerHTML = `<div class="dk" id="dk"><div class="dkt" id="dkt">${Array.from({ length: dk.count }, (_, i) => `<div class="dks" data-i="${i}" style="display:none"><div class="dkz"><div class="dkin"></div></div>${dk.hidden[i] ? '<span class="dkh">скрытый слайд</span>' : ""}</div>`).join("")}</div></div>
     <div class="dkhud" id="dkhud"><span id="dkc"></span><button class="btn" data-dkfull>${IC.close}Выйти</button></div>
     <div class="dkn" id="dkn"><b>Заметки</b><p id="dknt"></p></div>
     <div class="dkth" id="dkth">${Array.from({ length: dk.count }, (_, i) => `<button class="dktb" data-dkt="${i}"><div class="dkti"></div><span>${i + 1}</span></button>`).join("")}</div>`;
-  $("vbar").innerHTML = `<button class="btn" data-vclose aria-label="Закрыть">${IC.close}</button>${hasNotes ? `<button class="btn" data-dknote>${IC.book}Заметки</button>` : ""}<button class="btn pri" data-dkfull>${IC.eye}На весь экран</button><button class="btn sq" data-dkopen aria-label="Открыть в другом приложении">${IC.send}</button>`;
+  $("vbar").innerHTML = `<button class="btn" data-vclose aria-label="Закрыть">${IC.close}</button>${hasNotes ? `<button class="btn" data-dknote>${IC.book}Заметки</button>` : ""}<button class="btn pri" data-dkfull>${IC.expand}Весь экран</button><button class="btn sq" data-dkopen aria-label="Открыть в другом приложении">${IC.send}</button>`;
   deckLayout(); deckGo(V.i, false); deckThumbs();
   dkGestures();
 }
@@ -1952,7 +1954,7 @@ function deckLayout() {
   if (!full && h > H - 20) { h = H - 20; w = h * k; }
   Object.assign(V, { sw: w, sh: h, step: w + gap, W, H });
   const t = $("dkt"); t.style.height = H + "px";
-  t.querySelectorAll(".dks").forEach((el, i) => { Object.assign(el.style, { width: w + "px", height: h + "px", left: (W - w) / 2 + i * (w + gap) + "px", top: (H - h) / 2 + "px" }); });
+  t.querySelectorAll(".dks").forEach(el => { Object.assign(el.style, { width: w + "px", height: h + "px", left: (W - w) / 2 + "px", top: (H - h) / 2 + "px" }); });
   for (const [i, hd] of Object.entries(V.handles)) { hd.dispose(); delete V.handles[i]; t.querySelector(`.dks[data-i="${i}"] .dkin`).innerHTML = ""; }
   deckRender();
 }
@@ -1969,11 +1971,13 @@ function deckRender() {
 function deckGo(i, anim = true) {
   const dk = V.dk, prev = V.i; i = Math.max(0, Math.min(dk.count - 1, i));
   V.i = i; deckZoom(1, 0, 0, anim);
-  deckTrack(-i * V.step, anim);
+  deckTrack(0, anim);
   $("vpage").textContent = `${i + 1} / ${dk.count}`;
   $("dknt").textContent = dk.notes[i] || "К этому слайду заметок нет";
   document.querySelectorAll("#dkth .dktb").forEach((b, k) => b.classList.toggle("on", k === i));
-  const tb = document.querySelector(`#dkth .dktb[data-dkt="${i}"]`); if (tb) tb.scrollIntoView({ behavior: anim && MOTION ? "smooth" : "auto", inline: "center", block: "nearest" });
+  // крутим только ленту миниатюр (scrollIntoView прокручивал бы и весь просмотр — панель «отлетала»)
+  const th = $("dkth"), tb = th.querySelector(`.dktb[data-dkt="${i}"]`);
+  if (tb) th.scrollTo({ left: tb.offsetLeft - (th.clientWidth - tb.offsetWidth) / 2, behavior: anim && MOTION ? "smooth" : "auto" });
   if (anim && prev !== i) haptic("sel");
   deckRender();
   $("dkc").textContent = `${i + 1} / ${dk.count}`;
@@ -1984,16 +1988,20 @@ function deckGo(i, anim = true) {
     const P = store.get("deckPos", {}); P[V.f.path] = i; const K = Object.keys(P); if (K.length > 60) delete P[K[0]]; store.set("deckPos", P);
   }, 400);
 }
-// лента: соседи чуть меньше и приглушены — глубина; во время свайпа это плавно меняется
-function deckTrack(x, anim, drag) {
-  const t = $("dkt"); V.tx = x;
-  t.style.transition = anim && MOTION ? "transform .42s cubic-bezier(.2,.9,.25,1)" : "none";
-  t.style.transform = `translateX(${x}px)`;
-  const pos = -x / V.step;
-  t.querySelectorAll(".dks").forEach((el, i) => {
-    const d = Math.min(1, Math.abs(i - pos)), sc = V.full ? 1 : 1 - d * .08;
-    el.style.transition = anim && MOTION ? "transform .42s cubic-bezier(.2,.9,.25,1), opacity .42s" : "none";
-    el.style.transform = `scale(${sc})`; el.style.opacity = V.full ? (d < .5 ? 1 : 0) : 1 - d * .45;
+// слайды стоят каждый сам по себе (не одной широкой лентой — её Android дорисовывал кусками):
+// на экране и рядом только текущий и по два соседа; off — сдвиг пальцем; соседи чуть меньше и приглушены — глубина
+function deckTrack(off, anim) {
+  V.off = off;
+  const pos = V.i - off / V.step, ease = "cubic-bezier(.2,.9,.25,1)";
+  $("dkt").querySelectorAll(".dks").forEach((el, i) => {
+    const near = Math.abs(i - V.i) <= 2;
+    if (!near) { if (el.style.display !== "none") { clearTimeout(el._h); el._h = setTimeout(() => { if (Math.abs(i - V.i) > 2) el.style.display = "none"; }, anim ? 450 : 0); } return; }
+    const shown = el.style.display !== "none";
+    const d = Math.min(1, Math.abs(i - pos)), sc = V.full ? 1 : 1 - d * .08, x = (i - V.i) * V.step + off;
+    const tf = `translate3d(${x}px,0,0) scale(${sc})`, op = V.full ? (Math.abs(i - pos) < .5 ? 1 : 0) : 1 - d * .45;
+    if (!shown) { clearTimeout(el._h); el.style.display = ""; el.style.transition = "none"; el.style.transform = `translate3d(${x + (anim ? (i > V.i ? V.step : -V.step) : 0)}px,0,0) scale(.92)`; el.style.opacity = 0; el.getBoundingClientRect(); }
+    el.style.transition = anim && MOTION ? `transform .42s ${ease}, opacity .42s` : "none";
+    el.style.transform = tf; el.style.opacity = op;
   });
 }
 function deckZoom(z, px, py, anim) {
@@ -2049,7 +2057,7 @@ function dkGestures() {
       // точка между пальцами относительно центра слайда — то, что под ней, остаётся под пальцами
       T = { pinch: true, d0: dist(e.touches) || 1, z0: V.z, px0: V.px, py0: V.py, m: { x: mx - (r.left + r.width / 2), y: my - (r.top + r.height / 2) } }; return;
     }
-    const p = pt(e); T = { x0: p.x, y0: p.y, t0: Date.now(), tx0: V.tx, px0: V.px, py0: V.py, mode: null, dx: 0, dy: 0 };
+    const p = pt(e); T = { x0: p.x, y0: p.y, t0: Date.now(), px0: V.px, py0: V.py, mode: null, dx: 0, dy: 0 };
   }, { passive: true, capture: true });
   vb.addEventListener("touchmove", e => {
     if (V?.kind !== "deck" || !T) return;
@@ -2059,7 +2067,7 @@ function dkGestures() {
     const p = pt(e), dx = p.x - T.x0, dy = p.y - T.y0; T.dx = dx; T.dy = dy;
     if (!T.mode && Math.hypot(dx, dy) > 8) T.mode = V.z > 1.02 ? "pan" : Math.abs(dx) > Math.abs(dy) ? "swipe" : dy > 0 && !V.full ? "close" : "none";
     if (T.mode === "pan") deckZoom(V.z, T.px0 + dx, T.py0 + dy, false);
-    else if (T.mode === "swipe") { const edge = (V.i === 0 && dx > 0) || (V.i === V.dk.count - 1 && dx < 0); deckTrack(T.tx0 + (edge ? dx * .3 : dx), false, true); }
+    else if (T.mode === "swipe") { const edge = (V.i === 0 && dx > 0) || (V.i === V.dk.count - 1 && dx < 0); deckTrack(edge ? dx * .3 : dx, false); }
     else if (T.mode === "close") { vb.style.transition = "none"; vb.style.transform = `translateY(${Math.max(0, dy)}px) scale(${1 - Math.min(dy, 400) / 2400})`; $("viewer").style.setProperty("--vo", Math.max(.25, 1 - dy / 420).toFixed(3)); }
   }, { passive: false, capture: true });
   const end = e => {
