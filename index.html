@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610060100">
+<meta name="app-v" content="202610060200">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -443,7 +443,7 @@ nav.dock { touch-action: none; }
 .vz .col { display: flex; flex-direction: column; align-items: flex-start; gap: calc(10px * var(--z, 1)); padding: 4px 0 calc(10px * var(--z, 1)); }
 .vz canvas { display: block; flex: none; border-radius: 6px; box-shadow: 0 16px 30px -14px #000; background: #fff; }
 .vbody .msg { padding-top: 26vh; }
-.viewer.deck .vbody { overflow: hidden; }
+.viewer.vdeck .vbody { overflow: hidden; }
 .dk { position: relative; height: 100%; overflow: hidden; touch-action: none; }
 .dkth { touch-action: pan-x; } .dkn { touch-action: pan-y; }
 .dkt { position: absolute; left: 0; top: 0; width: 100%; }
@@ -468,7 +468,7 @@ nav.dock { touch-action: none; }
 .viewer.full { background: #000 !important; padding: 0 !important; }
 .viewer.full .vtop, .viewer.full .vbar, .viewer.full .dkth { display: none; }
 .viewer.full .dks { border-radius: 0; box-shadow: none; }
-.viewer.deck .vbar { gap: 8px; } .viewer.deck .vbar .btn { white-space: nowrap; padding: 12px 14px; }
+.viewer.vdeck .vbar { gap: 8px; } .viewer.vdeck .vbar .btn { white-space: nowrap; padding: 12px 14px; }
 .dkhud { position: absolute; top: calc(10px + var(--safe-top)); right: calc(12px + env(safe-area-inset-right, 0px)); z-index: 4; display: flex; align-items: center; gap: 10px; opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .25s, transform .3s var(--spring); }
 .dkhud span { padding: 7px 12px; border-radius: 99px; background: rgba(0,0,0,.6); color: #fff; font: 600 var(--fs-14)/1 var(--sans); font-variant-numeric: tabular-nums; }
 .dkhud .btn { background: rgba(0,0,0,.6); color: #fff; padding: 9px 14px; }
@@ -1929,7 +1929,7 @@ async function openDeck(b, page, me) {
   try { await document.fonts.load('16px "Calibri"'); await document.fonts.load('bold 16px "Calibri"'); } catch (e) {}
   page = page || store.get("deckPos", {})[V.f.path] || 0;
   Object.assign(V, { kind: "deck", dk, i: Math.min(Math.max(0, page), dk.count - 1), z: 1, px: 0, py: 0, full: false, chrome: true, handles: {}, thumbs: {} });
-  const v = $("viewer"), vb = $("vbody"); v.classList.add("deck");
+  const v = $("viewer"), vb = $("vbody"); v.classList.add("vdeck");   // не «deck»: так называется плитка колоды карточек, у неё сжатие при нажатии
   const hasNotes = dk.notes.some(Boolean);
   vb.innerHTML = `<div class="dk" id="dk"><div class="dkt" id="dkt">${Array.from({ length: dk.count }, (_, i) => `<div class="dks" data-i="${i}" style="display:none"><div class="dkz"><div class="dkin"></div></div>${dk.hidden[i] ? '<span class="dkh">скрытый слайд</span>' : ""}</div>`).join("")}</div></div>
     <div class="dkhud" id="dkhud"><span id="dkc"></span><button class="btn" data-dkfull>${IC.close}Выйти</button></div>
@@ -1940,7 +1940,7 @@ async function openDeck(b, page, me) {
   dkGestures();
 }
 function deckEnd() {
-  const v = $("viewer"); v.classList.remove("deck", "full", "bare", "notes", "hud");
+  const v = $("viewer"); v.classList.remove("vdeck", "full", "bare", "notes", "hud");
   if (V?.full) try { NATIVE?.orientation?.("portrait"); } catch (e) {}
   try { Object.values(V.handles).forEach(h => h.dispose()); Object.values(V.thumbs).forEach(h => h.dispose()); V.dk.dispose(); } catch (e) {}
   removeEventListener("resize", deckResize);
@@ -2080,8 +2080,9 @@ function dkGestures() {
       if (T.dy > 110 || (T.dy / dt > .7 && T.dy > 40)) { haptic("light"); closeViewer(true); }
       else { vb.style.transition = "transform .35s cubic-bezier(.34,1.4,.64,1)"; vb.style.transform = ""; $("viewer").style.removeProperty("--vo"); }
     }
-    else if (!T.mode && dt < 300) {   // тап: двойной — зум, одиночный — по краю листает, по центру прячет кнопки
-      const x = T.x0, y = T.y0, now = Date.now();
+    else if (!T.mode && dt < 300) {   // тап: по краю — сразу листает; по центру: двойной — зум, одиночный — прячет кнопки
+      const x = T.x0, y = T.y0, now = Date.now(), W = innerWidth;
+      if (V.z <= 1.02 && (x < W * .28 || x > W * .72)) { clearTimeout(tapT); last = null; deckGo(V.i + (x > W / 2 ? 1 : -1)); T = null; return; }
       if (last && now - last.t < 300 && Math.hypot(x - last.x, y - last.y) < 40) {
         clearTimeout(tapT); last = null; haptic("light");
         const r = $("dkt").querySelector(`.dks[data-i="${V.i}"]`).getBoundingClientRect(), cx = x - (r.left + r.width / 2), cy = y - (r.top + r.height / 2);
