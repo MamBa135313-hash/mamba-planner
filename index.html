@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610060500">
+<meta name="app-v" content="202610060600">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -631,6 +631,12 @@ input[type="date"], input[type="time"] { min-height: 50px; -webkit-appearance: n
 .mode span { font-size: var(--fs-12); font-weight: 500; color: var(--text-2); line-height: 1.38; }
 html.off [data-vsend], html.off [data-file], html.off [data-vdl] { display: none !important; }   /* файлы и так с телефона, бота нет */
 .addf { margin: 0 0 12px; }
+.ways { display: grid; gap: 8px; margin-top: 12px; }
+.way { display: grid; grid-template-columns: 34px 1fr; align-items: center; column-gap: 12px; text-align: left; border: 0; color: var(--text); padding: 13px 14px; border-radius: 16px; }
+.way i { grid-row: span 2; font-style: normal; font-size: 24px; text-align: center; } .way b { font: 600 var(--fs-16)/1.2 var(--serif); } .way span { font-size: var(--fs-12); color: var(--text-2); line-height: 1.35; margin-top: 2px; }
+.steps { margin: 10px 0 14px; padding-left: 20px; color: var(--text-2); font-size: var(--fs-14); line-height: 1.45; } .steps li { margin: 4px 0; } .steps b { color: var(--text); }
+.imp { margin: 10px 0; } .imp input { width: 100%; }
+.imps { display: grid; gap: 3px; margin-top: 6px; font-size: var(--fs-12); color: var(--text-2); } .imps span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .imps b { color: var(--text); font-weight: 600; } .imps .more { color: var(--text-3); }
 .frow { display: flex; gap: 10px; } .frow .addf { flex: 1; margin-top: 0; padding: 14px 10px; font-size: var(--fs-14); }
 .fmv { flex-wrap: wrap; } .fmv .btn { flex: 0 1 auto; } .fmv .btn.on { background: var(--paper); color: var(--paper-ink); }
 .dirsw { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 10px; padding: 4px; border-radius: 99px; background: var(--glass); border: 1px solid var(--stroke-2); backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%); }
@@ -921,6 +927,95 @@ async function delLocalFile(path) {
 function parseDeck(txt) {
   return txt.split(/\n/).map(l => l.replace(/^\s*[•\-*\d.)]+\s+/, "").trim()).filter(Boolean)
     .map(l => { const m = /^(.+?)\s+[—–-]\s+(.+)$/.exec(l) || /^(.+?)\s*[:\t]\s*(.+)$/.exec(l); return m ? [m[1].trim(), m[2].trim()] : null; }).filter(Boolean);
+}
+// ---------- быстрые колоды: ИИ, импорт из файла, вручную ----------
+// команда для ИИ: он делает колоду из материала и отвечает одним блоком кода (JSON), который вставляют сюда
+const AI_PROMPT = `Сделай колоды карточек для зубрёжки из материала, который я пришлю ниже или во вложении (текст, фото страниц, PDF, список слов).
+
+Правила:
+— одна карточка = один факт; лицевая сторона — короткий термин, слово или вопрос, оборот — ответ в 1–2 строки;
+— иностранные слова и выражения: на лицевой стороне — на иностранном языке, на обороте — перевод на русский (пояснение — в скобках);
+— 10–80 карточек на колоду, без повторов; только то, что есть в материале, ничего не выдумывай;
+— если тем несколько — сделай несколько колод; название колоды — по теме, коротко.
+
+Ответь ТОЛЬКО одним блоком кода, без пояснений до и после, строго в формате:
+\`\`\`json
+{"mini_deck": 1, "decks": [{"name": "Название колоды", "cards": [["лицевая сторона", "оборот"], ["...", "..."]]}]}
+\`\`\`
+
+Материал:
+`;
+// разбор всего, что могут вставить или выбрать: код от ИИ (JSON), экспорт Quizlet/Anki (таб), CSV, «слово — перевод», наш cards.md
+function parseImport(txt, fallback = "Новая колода") {
+  txt = String(txt || "").replace(/^\uFEFF/, "").trim();
+  const fence = /```(?:json|txt|csv)?\s*([\s\S]*?)```/i.exec(txt); if (fence) txt = fence[1].trim();
+  const pair = c => Array.isArray(c) ? [c[0], c[1]] : c && typeof c === "object" ? [c.q ?? c.front ?? c.term ?? c.question ?? c.word, c.a ?? c.back ?? c.definition ?? c.answer ?? c.translation] : null;
+  const clean = C => (C || []).map(pair).filter(p => p && p[0] != null && p[1] != null && String(p[0]).trim() && String(p[1]).trim()).map(([a, b]) => [String(a).trim(), String(b).trim()]);
+  const j = (() => { const k = txt.search(/[\[{]/); if (k < 0) return null; try { return JSON.parse(txt.slice(k).replace(/[“”]/g, '"')); } catch (e) { return null; } })();
+  if (j) {
+    const L = Array.isArray(j) ? (Array.isArray(j[0]) || (j[0] && !j[0].cards) ? [{ name: fallback, cards: j }] : j) : j.decks || (j.cards ? [j] : []);
+    const out = L.map(d => ({ name: String(d.name || d.deck || d.title || fallback).trim(), cards: clean(d.cards) })).filter(d => d.cards.length);
+    if (out.length) return out;
+  }
+  // строки; заголовки «# Тема» или «## Колода: Тема» начинают новую колоду
+  const out = []; let cur = null;
+  const csv = l => { const r = [], re = /\s*(?:"((?:[^"]|"")*)"|([^,;]*))\s*(?:[,;]|$)/g; let m; while ((m = re.exec(l)) && r.length < 3) { r.push((m[1] ?? m[2] ?? "").replace(/""/g, '"')); if (m.index + m[0].length >= l.length) break; } return r; };
+  for (let l of txt.split(/\r?\n/)) {
+    const h = /^\s*#{1,3}\s*(?:Колода:\s*)?(.+?)\s*(?:\(#\d+\))?\s*$/.exec(l);
+    if (h) { cur = { name: h[1], cards: [] }; out.push(cur); continue; }
+    if (!l.trim()) continue;
+    let p = null;
+    if (l.includes("\t")) { const t = l.split("\t"); p = [t[0], t.slice(1).join(" ")]; }
+    else { p = parseDeck(l)[0] || null; if (!p && /[,;]/.test(l)) { const c = csv(l); if (c.length >= 2) p = [c[0], c[1]]; } }
+    if (p && String(p[0]).trim() && String(p[1]).trim()) { if (!cur) { cur = { name: fallback, cards: [] }; out.push(cur); } cur.cards.push([String(p[0]).trim(), String(p[1]).trim()]); }
+  }
+  // строка-заголовок таблицы («Термин — Определение», «Front, Back») — не карточка
+  const head = /^(term|термин|front|word|слово|вопрос|question|лицевая( сторона)?|понятие)$/i, head2 = /^(definition|определение|back|перевод|ответ|answer|translation|оборот|значение)$/i;
+  for (const d of out) if (d.cards.length && head.test(d.cards[0][0]) && head2.test(d.cards[0][1])) d.cards.shift();
+  return out.filter(d => d.cards.length);
+}
+let pendingDecks = null;
+function importPreview(L) {
+  if (!L.length) { toast("Карточек не нашлось — нужен код от ИИ или строки «слово — перевод»"); return; }
+  pendingDecks = L; const n = L.reduce((k, d) => k + d.cards.length, 0);
+  sheet(`<h4>Нашлось ${n} ${pl(n, "карточка", "карточки", "карточек")}</h4><p>${L.length > 1 ? `${L.length} ${pl(L.length, "колода", "колоды", "колод")} — поправь названия, если нужно` : "Проверь название колоды"}</p>
+    ${L.map((d, i) => `<div class="imp"><input data-impname="${i}" value="${esc(d.name)}" maxlength="80"><div class="imps">${d.cards.slice(0, 3).map(c => `<span><b>${esc(c[0])}</b> — ${esc(c[1])}</span>`).join("")}${d.cards.length > 3 ? `<span class="more">и ещё ${d.cards.length - 3}</span>` : ""}</div></div>`).join("")}
+    <button class="btn pri go" data-save="import">${IC.check}Добавить ${L.length > 1 ? "колоды" : "колоду"}</button>`);
+}
+function saveImport() {
+  const u = udb(), names = new Set(D.cards.map(d => d.name)); let last = null, n = 0;
+  pendingDecks.forEach((d, i) => {
+    let name = (document.querySelector(`[data-impname="${i}"]`)?.value || d.name).trim() || "Колода", k = 2;
+    const base = name; while (names.has(name)) name = `${base} (${k++})`;
+    names.add(name); u.decks.push({ name, task: null, cards: d.cards, user: true, id: "u" + Date.now() + i }); last = name; n += d.cards.length;
+  });
+  saveU(u); closeSheet(); haptic("ok");
+  toast(pendingDecks.length > 1 ? `🃏 Добавлено колод: ${pendingDecks.length}, карточек: ${n}` : `🃏 Колода «${last}»: ${n} ${pl(n, "карточка", "карточки", "карточек")}`);
+  deck = pendingDecks.length > 1 ? null : D.cards.findIndex(d => d.name === last); pendingDecks = null; render();
+}
+async function clipText() { try { const t = await navigator.clipboard.readText(); if (t) return t; } catch (e) {} try { return NATIVE?.paste?.() || ""; } catch (e) { return ""; } }
+async function clipPut(t) { try { await navigator.clipboard.writeText(t); return true; } catch (e) {} try { NATIVE?.copy?.(t); return !!NATIVE?.copy; } catch (e) { return false; } }
+function newDeckSheet() {
+  sheet(`<h4>Новая колода</h4><p>Быстрее всего — попросить ИИ: он сам сделает карточки из учебника, конспекта или списка слов.</p>
+    <div class="ways">
+      <button class="glass way" data-dkway="ai"><i>✨</i><b>С помощью ИИ</b><span>Claude, ChatGPT и другие: команда → материал → вставь ответ сюда</span></button>
+      <button class="glass way" data-dkway="file"><i>📥</i><b>Из файла</b><span>Quizlet, Anki, CSV, TXT или файл с кодом от ИИ</span></button>
+      <button class="glass way" data-dkway="paste"><i>📋</i><b>Вставить код или список</b><span>ответ ИИ, таблица, строки «слово — перевод»</span></button>
+      <button class="glass way" data-dkway="hand"><i>✍️</i><b>Вручную</b><span>название и карточки построчно</span></button>
+    </div><input type="file" id="dkpick" accept=".txt,.csv,.tsv,.json,.md,text/*,application/json" hidden>`);
+}
+function aiSheet() {
+  sheet(`<h4>Колода с помощью ИИ</h4>
+    <ol class="steps"><li><b>Скопируй команду</b> или сразу открой Claude — команда подставится сама</li><li>Приложи материал: фото страниц, PDF, конспект или просто список слов — и отправь</li><li>Скопируй ответ (блок кода) и вставь ниже</li></ol>
+    <div class="row2"><button class="btn pri" data-dkcopy>${IC.layers}Скопировать команду</button><button class="btn" data-dkclaude>${IC.send}Открыть Claude</button></div>
+    <textarea id="dkcode" style="min-height:120px;margin-top:14px" placeholder="Вставь сюда ответ ИИ"></textarea>
+    <div class="row2"><button class="btn" data-dkclip>${IC.down}Вставить из буфера</button><button class="btn pri" data-dkparse>${IC.check}Импортировать</button></div>`);
+}
+function pasteSheet() {
+  sheet(`<h4>Вставить код или список</h4><p>Подойдёт ответ ИИ, таблица из Quizlet/Anki/Excel или строки «слово — перевод». Заголовок «# Тема» начинает новую колоду.</p>
+    <textarea id="dkcode" style="min-height:200px" placeholder="to consume — потреблять&#10;similarity — сходство"></textarea>
+    <div class="row2"><button class="btn" data-dkclip>${IC.down}Из буфера</button><button class="btn pri" data-dkparse>${IC.check}Дальше</button></div>`);
+  setTimeout(() => $("dkcode")?.focus(), 400);
 }
 function deckSheet() {
   sheet(`<h4>Новая колода</h4><p>Каждая строка — карточка: «слово — перевод». Можно вставить список целиком.</p>
@@ -2991,7 +3086,16 @@ document.addEventListener("click", e => {
   if (s.file !== undefined) { addOp({ op: "send_file", path: s.file, task: +s.task || null }, "📩 В чат — придёт после «Отправить боту»"); return; }
   if (s.qd !== undefined) { draft.date = s.qd || null; document.querySelectorAll("#nq .btn").forEach(b => b.classList.toggle("on", b === el)); const di = $("ndate"); if (di) di.value = s.qd; haptic("sel"); return; }
   if (s.tg === "imp") { draft.imp = !draft.imp; $("nimp").classList.toggle("on", draft.imp); haptic("sel"); return; }
-  if (s.newdeck !== undefined) { deckSheet(); return; }
+  if (s.newdeck !== undefined) { newDeckSheet(); return; }
+  if (s.dkway === "hand") { deckSheet(); return; }
+  if (s.dkway === "ai") { aiSheet(); return; }
+  if (s.dkway === "paste") { pasteSheet(); return; }
+  if (s.dkway === "file") { const i = $("dkpick"); i.value = ""; i.onchange = async () => { const f = i.files[0]; if (!f) return; importPreview(parseImport(await f.text(), f.name.replace(/\.\w+$/, ""))); }; i.click(); return; }
+  if (s.dkcopy !== undefined) { clipPut(AI_PROMPT).then(ok => { haptic(ok ? "ok" : "error"); toast(ok ? "📋 Команда скопирована — вставь её в ИИ и приложи материал" : "Не получилось скопировать"); }); return; }
+  if (s.dkclaude !== undefined) { haptic("light"); location.href = "https://claude.ai/new?q=" + encodeURIComponent(AI_PROMPT); return; }
+  if (s.dkclip !== undefined) { clipText().then(t => { if (t) { $("dkcode").value = t; haptic("sel"); } else toast("Буфер пуст — вставь вручную долгим нажатием"); }); return; }
+  if (s.dkparse !== undefined) { const t = $("dkcode").value; if (!t.trim()) { $("dkcode").focus(); return; } importPreview(parseImport(t)); return; }
+  if (s.save === "import") { if (pendingDecks) saveImport(); return; }
   if (s.save === "deck") {
     const name = $("dname").value.trim(), C = parseDeck($("dtext").value);
     if (!name) { $("dname").focus(); return; }
