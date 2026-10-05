@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610052300">
+<meta name="app-v" content="202610052320">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -443,6 +443,11 @@ nav.dock { touch-action: none; }
 .vz .col { display: flex; flex-direction: column; align-items: flex-start; gap: calc(10px * var(--z, 1)); padding: 4px 0 calc(10px * var(--z, 1)); }
 .vz canvas { display: block; flex: none; border-radius: 6px; box-shadow: 0 16px 30px -14px #000; background: #fff; }
 .vbody .msg { padding-top: 26vh; }
+.vdoc { margin: 6px 12px 20px; padding: 22px 18px; border-radius: 10px; background: #fff; color: #1a1d2e; font: 15px/1.5 var(--sans); box-shadow: 0 16px 30px -14px #000; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+.vdoc h1, .vdoc h2, .vdoc h3 { font-family: var(--serif); line-height: 1.25; margin: 1em 0 .4em; } .vdoc h3:first-child { margin-top: 0; }
+.vdoc p { margin: 0 0 .7em; } .vdoc img { max-width: 100%; height: auto; } .vdoc a { color: #2b59c3; } .vdoc .dim { color: #6b7090; }
+.vdoc table { border-collapse: collapse; font-size: 13px; } .vdoc td, .vdoc th { border: 1px solid #d6d8e6; padding: 4px 7px; vertical-align: top; }
+.vtab { overflow-x: auto; margin: 0 -18px 14px; padding: 0 18px; } .vtab td { white-space: nowrap; }
 .vspin { position: absolute; left: 50%; top: 45%; width: 38px; height: 38px; margin: -19px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: var(--paper); animation: rot .8s linear infinite; display: none; }
 .viewer.busy .vspin { display: block; }
 @keyframes rot { to { transform: rotate(360deg); } }
@@ -1691,7 +1696,7 @@ function vCards() {
   return study ? studyView() : deckScreen(decks[deck], deck);
 }
 
-const FT = { pdf: ["PDF", "#ff5d6c"], doc: ["DOC", "#4b8bff"], docx: ["DOC", "#4b8bff"], ppt: ["PPT", "#ff8a3d"], pptx: ["PPT", "#ff8a3d"], xls: ["XLS", "#2fbf71"], xlsx: ["XLS", "#2fbf71"], txt: ["TXT", "#8a8fab"], zip: ["ZIP", "#c08b4a"] };
+const FT = { csv: ["CSV", "#2fbf71"], ods: ["XLS", "#2fbf71"], odt: ["DOC", "#4b8bff"], rtf: ["DOC", "#4b8bff"], pdf: ["PDF", "#ff5d6c"], doc: ["DOC", "#4b8bff"], docx: ["DOC", "#4b8bff"], ppt: ["PPT", "#ff8a3d"], pptx: ["PPT", "#ff8a3d"], xls: ["XLS", "#2fbf71"], xlsx: ["XLS", "#2fbf71"], txt: ["TXT", "#8a8fab"], zip: ["ZIP", "#c08b4a"] };
 const extOf = x => ((/\.(\w{2,5})$/.exec(x.name) || /\.(\w{2,5})$/.exec(x.path || "") || [])[1] || "").toLowerCase();
 const ftype = x => x.kind === "photo" ? ["IMG", "#b45cff"] : FT[extOf(x)] || ["FILE", "#7c6cff"];
 const dispName = x => String(x.name || "").replace(/\.\w{2,5}$/, "").replace(/_/g, " ").trim() || x.name;
@@ -1699,13 +1704,13 @@ function vFiles() {
   const f = D.files || [], cur = f.filter(x => !x.archive && !x.dup), arc = f.filter(x => x.archive); // копии задач, уже лежащие в архиве, не повторяем
   const tile = x => tileF(x);
   if (OFFLINE && !ffold) {
-    const addB = `<button class="btn pri big addf" data-fadd>${IC.down}Добавить файл с телефона</button><input type="file" id="fpick" accept="application/pdf,image/*" multiple hidden>`;
-    return addB + (cur.length ? `<div class="files">${cur.map(tile).join("")}</div>` : `<section class="glass card">${empty("📎", "Файлов пока нет", "Добавь PDF или фото — они сохранятся на телефоне и откроются без интернета")}</section>`) + folderTiles(arc, "f");
+    const addB = `<button class="btn pri big addf" data-fadd>${IC.down}Добавить файл с телефона</button><input type="file" id="fpick" multiple hidden>`;
+    return addB + (cur.length ? `<div class="files">${cur.map(tile).join("")}</div>` : `<section class="glass card">${empty("📎", "Файлов пока нет", "Добавь любые файлы — PDF, фото, Word, Excel, презентации. Они сохранятся на телефоне и откроются без интернета")}</section>`) + folderTiles(arc, "f");
   }
   if (!f.length) return `<section class="glass card">${empty("📎", "Файлов пока нет", "Они появятся, когда к задачам прикрепят материалы или бот положит конспекты в архив")}</section>`;
   function tileF(x) { const [n, c] = ftype(x); return `<div class="glass file"><div class="ty" style="--fc:${c}">${n}</div>
     <div class="fn">${esc(dispName(x))}</div>${x.archive || x.local ? "" : `<div class="ft">#${x.task} · ${esc(x.task_text.slice(0, 44))}</div>`}
-    <div class="fbtns">${x.enc ? (viewable(x) ? `<button class="btn pri" data-fview="${esc(x.path)}">${IC.eye}Открыть</button>` : `<button class="btn pri" data-fdl="${esc(x.path)}">${IC.down}Сохранить</button>`) : ""}
+    <div class="fbtns">${x.enc ? (viewable(x) ? `<button class="btn pri" data-fview="${esc(x.path)}">${IC.eye}Открыть</button>` : `<button class="btn pri" data-fdl="${esc(x.path)}">${x.local ? IC.eye + "Открыть" : IC.down + "Сохранить"}</button>`) : ""}
       ${x.local ? `<button class="btn sq" data-fdel="${esc(x.path)}" aria-label="Удалить">${IC.close}</button>` : `<button class="btn ${x.enc ? "sq" : ""}" data-file="${esc(x.path)}" data-task="${x.task || ""}" ${x.path ? "" : "disabled"} aria-label="В чат">${IC.send}${x.enc ? "" : "В чат"}</button>`}</div></div>`; }
   if (ffold) {
     const A = arc.filter(x => x.subject === ffold);
@@ -1721,7 +1726,8 @@ const fileBy = path => (D.files || []).find(f => f.path === path);
 const MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", pdf: "application/pdf", txt: "text/plain",
   doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ppt: "application/vnd.ms-powerpoint",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation", xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
-const viewable = f => f.kind === "photo" || extOf(f) === "pdf" || !!f.view; // Word/Excel/PowerPoint — через PDF-копию (f.view)
+const DOCX = /^docx$/, SHEET = /^(xlsx|xlsm|xls|csv|ods)$/;
+const viewable = f => f.kind === "photo" || extOf(f) === "pdf" || !!f.view || (f.local && (DOCX.test(extOf(f)) || SHEET.test(extOf(f)))); // Word/Excel/PowerPoint — через PDF-копию (f.view); в автономной версии docx и таблицы — прямо здесь
 const fname = f => { const e = extOf(f) || (f.kind === "photo" ? "jpg" : "bin"); const n = f.name.replace(/[\\/:*?"<>|«»]/g, "").trim().slice(0, 100) || "file"; return /\.\w{2,5}$/.test(n) ? n : n + "." + e; };
 const blobs = {};
 async function fileBlob(f, slot = f.enc) {
@@ -1750,6 +1756,13 @@ function loadPdfJs() {
 // сохранить: на iPhone — системное меню «Поделиться» (сохранить в Файлы/Фото, переслать), иначе — обычное скачивание
 async function dlFile(f) {
   haptic("light");
+  if (f.local && NATIVE?.openFile) {   // автономная версия: файл открывает подходящее приложение на телефоне (Word, WPS, Документы…)
+    try {
+      const b = await fileBlob(f), d = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(b); });
+      NATIVE.openFile(fname(f), b.type || MIME[extOf(f)] || "application/octet-stream", String(d).slice(String(d).indexOf(",") + 1));
+    } catch (e) { toast("Не получилось открыть файл"); }
+    return;
+  }
   try {
     const b = await fileBlob(f), file = new File([b], fname(f), { type: b.type });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
@@ -1789,6 +1802,7 @@ const vVisual = () => { const vb = $("vbody"); return { ax: V.ox - vb.scrollLeft
 // новый зум z: точка файла, что была в A, остаётся там же, если позволяет прокрутка; from — с какого вида плавно перейти
 function vSet(z, ax, ay, from, dur = 280) {
   const vb = $("vbody"), vz = $("vz");
+  if (!vz) return;
   vLayout(z);
   vb.scrollLeft = V.ox - ax; vb.scrollTop = V.oy - ay;
   vz.style.transition = "none"; vz.style.transformOrigin = "0 0";
@@ -1846,9 +1860,28 @@ async function viewFile(f, opt = {}) {
     const b = await fileBlob(f, f.view || f.enc);
     if (V !== me) return;
     if (b.type === "application/pdf") await openPdf(b, opt.page || 0, me);
+    else if (f.local && DOCX.test(extOf(f))) await openDocx(b, me);
+    else if (f.local && SHEET.test(extOf(f))) await openSheet(b, me);
     else await openImg(b, me);
   } catch (e) { if (V === me) vb.innerHTML = `<div class="msg"><b>😕</b>${OFFLINE ? "Не удалось открыть файл" : "Не удалось открыть — нажми «В чат», бот пришлёт файл"}</div>`; }
   if (V === me) loading(false);
+}
+// автономная версия: Word (docx) и таблицы показываем как страницу — библиотеки лежат в приложении (lib/)
+const libs = {};
+const loadLib = (n, g) => libs[n] || (libs[n] = new Promise((ok, no) => { if (window[g]) return ok(window[g]); const sc = document.createElement("script"); sc.src = "lib/" + n; sc.onload = () => ok(window[g]); sc.onerror = () => { libs[n] = null; no(new Error(n)); }; document.head.appendChild(sc); }));
+function docShow(html, me) {
+  if (V !== me) return;
+  V.kind = "doc"; V.z = 1;
+  const vb = $("vbody"); vb.innerHTML = `<div class="vdoc">${html}</div>`; vb.scrollTo(0, 0);
+  vb.querySelectorAll(".vdoc a[href]").forEach(a => { if (!/^(https?:|mailto:)/i.test(a.getAttribute("href"))) a.removeAttribute("href"); else a.target = "_blank"; });
+}
+async function openDocx(b, me) {
+  const m = await loadLib("mammoth.browser.min.js", "mammoth"), r = await m.convertToHtml({ arrayBuffer: await b.arrayBuffer() });
+  docShow(r.value || `<p class="dim">В документе нет текста</p>`, me);
+}
+async function openSheet(b, me) {
+  const X = await loadLib("xlsx.full.min.js", "XLSX"), wb = X.read(new Uint8Array(await b.arrayBuffer()), { type: "array" });
+  docShow(wb.SheetNames.map(n => `${wb.SheetNames.length > 1 ? `<h3>${esc(n)}</h3>` : ""}<div class="vtab">${X.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" })}</div>`).join("") || `<p class="dim">Таблица пустая</p>`, me);
 }
 async function openImg(b, me) {
   const vb = $("vbody"), img = new Image();
@@ -1905,8 +1938,9 @@ function closeViewer(anim) {
   const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   const rel = p => { const r = vb.getBoundingClientRect(); return { x: p.x - r.left, y: p.y - r.top }; };
   vb.addEventListener("touchstart", e => {
-    if (!V || !$("vz")) return;
+    if (!V || (!$("vz") && V.kind !== "doc")) return;
     if (e.touches.length === 2) {
+      if (!$("vz")) return;
       C = null; tap = null;
       const m = rel(mid(e.touches)), A = vVisual();
       P = { m0: m, d0: dist(e.touches) || 1, A0: A, last: { ax: A.ax, ay: A.ay, z: A.z }, m };
