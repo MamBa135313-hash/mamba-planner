@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610060400">
+<meta name="app-v" content="202610060500">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -631,6 +631,8 @@ input[type="date"], input[type="time"] { min-height: 50px; -webkit-appearance: n
 .mode span { font-size: var(--fs-12); font-weight: 500; color: var(--text-2); line-height: 1.38; }
 html.off [data-vsend], html.off [data-file], html.off [data-vdl] { display: none !important; }   /* файлы и так с телефона, бота нет */
 .addf { margin: 0 0 12px; }
+.frow { display: flex; gap: 10px; } .frow .addf { flex: 1; margin-top: 0; padding: 14px 10px; font-size: var(--fs-14); }
+.fmv { flex-wrap: wrap; } .fmv .btn { flex: 0 1 auto; } .fmv .btn.on { background: var(--paper); color: var(--paper-ink); }
 .dirsw { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 10px; padding: 4px; border-radius: 99px; background: var(--glass); border: 1px solid var(--stroke-2); backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%); }
 .dirsw button { position: relative; z-index: 1; border: 0; background: transparent; color: var(--text-2); font-size: var(--fs-14); font-weight: 600; padding: 9px 4px; border-radius: 99px; white-space: nowrap; transition: color .3s var(--ease); }
 .dirsw button.on { color: var(--paper-ink); }
@@ -757,6 +759,7 @@ const IC = {
   move: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="4"/><path d="M8 2v4M16 2v4M3 10h18M9 15.5h6m-2-2 2 2-2 2"/></svg>',
   flag: '<svg viewBox="0 0 24 24"><path d="M5 21V4m0 0h11l-2 4 2 4H5"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  more: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
   retry: '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>',
   chat: '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.7A8.5 8.5 0 1 1 21 11.5Z"/></svg>',
 };
@@ -857,11 +860,11 @@ async function refreshData(force) {
   } catch (e) { offline = true; }
 }
 // ---------- автономная версия: всё, что человек добавил сам, хранится на телефоне ----------
-const udb = () => store.get("offlineDB", null) || { tasks: [], nextId: 1, decks: [], files: [] };
+const udb = () => { const u = store.get("offlineDB", null) || { tasks: [], nextId: 1, decks: [], files: [] }; u.folders = u.folders || []; return u; };
 function offD(u = udb()) {
   const S = window.MINI_SEED || {};
   return { v: 1, generated: S.generated || new Date().toISOString(), schedule: S.schedule || { days: {} }, regular: S.regular || [], birthdays: [],
-    tasks: u.tasks, cards: (S.cards || []).concat(u.decks), files: u.files, digest: null, weather: null };
+    tasks: u.tasks, cards: (S.cards || []).concat(u.decks), files: u.files, folders: u.folders, digest: null, weather: null };
 }
 function saveU(u) { store.set("offlineDB", u); const did = deck !== null && D?.cards?.[deck] ? deckId(D.cards[deck]) : null; D = offD(u); if (did) { const i = D.cards.findIndex(x => deckId(x) === did); deck = i >= 0 ? i : null; } }
 function applyLocal(o) {
@@ -883,9 +886,31 @@ async function addLocalFiles(list) {
     const ext = (/\.(\w{2,5})$/.exec(file.name) || [])[1]?.toLowerCase() || (file.type.startsWith("image/") ? "jpg" : "bin");
     const path = "local/" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + "." + ext;
     await idbDo("readwrite", st => st.put(file, path));
-    u.files.unshift({ name: file.name, kind: file.type.startsWith("image/") ? "photo" : "doc", path, enc: "local", local: true, task: null, task_text: "" }); n++;
+    u.files.unshift({ name: file.name, kind: file.type.startsWith("image/") ? "photo" : "doc", path, enc: "local", local: true, task: null, task_text: "", folder: ufold() }); n++;
   }
   saveU(u); haptic("ok"); toast(n === 1 ? "📎 Файл сохранён на телефоне" : `📎 Сохранено файлов: ${n}`); render(false);
+}
+// свои папки в «Файлах» (только в автономной версии): ffold = "u:<id>" — открыта своя папка
+const ufold = () => (ffold && String(ffold).startsWith("u:")) ? ffold.slice(2) : null;
+const FOLDER_SVG = '<svg class="fi" viewBox="0 0 64 50"><path class="bk" d="M4 8a5 5 0 0 1 5-5h14l6 6h26a5 5 0 0 1 5 5v29a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path class="fr" d="M4 18a5 5 0 0 1 5-5h46a5 5 0 0 1 5 5v25a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/></svg>';
+function folderSheet(id) {
+  const f = id && udb().folders.find(x => x.id === id);
+  draft = { fold: id || null };
+  sheet(`<h4>${f ? "Папка" : "Новая папка"}</h4><p>${f ? "Переименуй или удали. Файлы из удалённой папки не пропадут — переедут в общий список." : "Например, по предмету или к сессии"}</p>
+    <input id="fname" placeholder="Название папки" value="${f ? esc(f.name) : ""}" maxlength="60" style="width:100%">
+    <button class="btn pri go" data-save="fold">${f ? "Сохранить" : "Создать"}</button>
+    ${f ? `<button class="btn go" data-delfold style="margin-top:8px">${IC.close}Удалить папку</button>` : ""}`);
+  setTimeout(() => $("fname")?.focus(), 400);
+}
+function fileSheet(path) {
+  const f = fileBy(path); if (!f) return;
+  const F = udb().folders, cur = f.folder || "";
+  draft = { fpath: path };
+  sheet(`<h4>${esc(dispName(f))}</h4><p>${esc(f.name)}</p>
+    <label class="f">Название</label><input id="frn" value="${esc(dispName(f))}" maxlength="100" style="width:100%">
+    <button class="btn go" data-save="frn">Переименовать</button>
+    <label class="f">Папка</label><div class="quick fmv">${[["", "Без папки"], ...F.map(x => [x.id, x.name])].map(([id, n]) => `<button class="btn ${id === cur ? "on" : ""}" data-fmove="${esc(id)}">${id ? IC.folder : IC.files}${esc(n)}</button>`).join("")}<button class="btn" data-nfold>${IC.plus}Новая папка</button></div>
+    <button class="btn go" data-fdel="${esc(path)}" style="margin-top:14px">${IC.close}Удалить с телефона</button>`);
 }
 async function delLocalFile(path) {
   const u = udb(); u.files = u.files.filter(f => f.path !== path); saveU(u);
@@ -1741,15 +1766,25 @@ const dispName = x => String(x.name || "").replace(/\.\w{2,5}$/, "").replace(/_/
 function vFiles() {
   const f = D.files || [], cur = f.filter(x => !x.archive && !x.dup), arc = f.filter(x => x.archive); // копии задач, уже лежащие в архиве, не повторяем
   const tile = x => tileF(x);
-  if (OFFLINE && !ffold) {
-    const addB = `<button class="btn pri big addf" data-fadd>${IC.down}Добавить файл с телефона</button><input type="file" id="fpick" multiple hidden>`;
-    return addB + (cur.length ? `<div class="files">${cur.map(tile).join("")}</div>` : `<section class="glass card">${empty("📎", "Файлов пока нет", "Добавь любые файлы — PDF, фото, Word, Excel, презентации. Они сохранятся на телефоне и откроются без интернета")}</section>`) + folderTiles(arc, "f");
+  if (OFFLINE && (!ffold || ufold())) {
+    const F = D.folders || [], uf = ufold(), fo = uf && F.find(x => x.id === uf);
+    if (uf && !fo) ffold = null;
+    const addB = `<div class="frow"><button class="btn pri big addf" data-fadd>${IC.down}${fo ? "Добавить файл сюда" : "Добавить файл"}</button>${fo ? "" : `<button class="btn big addf" data-nfold>${IC.folder}Новая папка</button>`}</div><input type="file" id="fpick" multiple hidden>`;
+    if (fo) {
+      const L = cur.filter(x => x.folder === uf);
+      return `<div class="glass wk"><button class="ar" data-fold="" data-fk="f" aria-label="Назад">${IC.prev}</button><b>${IC.folder}${L.length} ${pl(L.length, "файл", "файла", "файлов")}</b><button class="ar" data-fren="${esc(uf)}" aria-label="Переименовать или удалить папку">${IC.more}</button></div>`
+        + addB + (L.length ? `<div class="files">${L.map(tile).join("")}</div>` : `<section class="glass card">${empty("📂", "Папка пустая", "Добавь файлы кнопкой выше или перенеси сюда уже добавленные: «⋯» на файле → «Папка»")}</section>`);
+    }
+    const root = cur.filter(x => !x.folder || !F.some(f => f.id === x.folder));
+    const tilesF = F.length ? `<div class="folders">${F.map((fo, i) => { const n = cur.filter(x => x.folder === fo.id).length;
+      return `<button class="glass folder" data-fold="u:${esc(fo.id)}" data-fk="f" style="--fc:${FOLD_C[i % FOLD_C.length]}">${FOLDER_SVG}<b>${esc(fo.name)}</b><span>${n} ${pl(n, "файл", "файла", "файлов")}</span></button>`; }).join("")}</div>` : "";
+    return addB + tilesF + (root.length ? `<div class="files">${root.map(tile).join("")}</div>` : F.length ? "" : `<section class="glass card">${empty("📎", "Файлов пока нет", "Добавь любые файлы — PDF, фото, Word, Excel, презентации. Они сохранятся на телефоне и откроются без интернета. Папки помогут разложить их по предметам")}</section>`) + folderTiles(arc, "f");
   }
   if (!f.length) return `<section class="glass card">${empty("📎", "Файлов пока нет", "Они появятся, когда к задачам прикрепят материалы или бот положит конспекты в архив")}</section>`;
   function tileF(x) { const [n, c] = ftype(x); return `<div class="glass file"><div class="ty" style="--fc:${c}">${n}</div>
     <div class="fn">${esc(dispName(x))}</div>${x.archive || x.local ? "" : `<div class="ft">#${x.task} · ${esc(x.task_text.slice(0, 44))}</div>`}
     <div class="fbtns">${x.enc ? (viewable(x) ? `<button class="btn pri" data-fview="${esc(x.path)}">${IC.eye}Открыть</button>` : `<button class="btn pri" data-fdl="${esc(x.path)}">${x.local ? IC.eye + "Открыть" : IC.down + "Сохранить"}</button>`) : ""}
-      ${x.local ? `<button class="btn sq" data-fdel="${esc(x.path)}" aria-label="Удалить">${IC.close}</button>` : `<button class="btn ${x.enc ? "sq" : ""}" data-file="${esc(x.path)}" data-task="${x.task || ""}" ${x.path ? "" : "disabled"} aria-label="В чат">${IC.send}${x.enc ? "" : "В чат"}</button>`}</div></div>`; }
+      ${x.local ? `<button class="btn sq" data-fmore="${esc(x.path)}" aria-label="Папка, название, удалить">${IC.more}</button>` : `<button class="btn ${x.enc ? "sq" : ""}" data-file="${esc(x.path)}" data-task="${x.task || ""}" ${x.path ? "" : "disabled"} aria-label="В чат">${IC.send}${x.enc ? "" : "В чат"}</button>`}</div></div>`; }
   if (ffold) {
     const A = arc.filter(x => x.subject === ffold);
     return folderBar(A[0], A, "f") + topicsOf(A).map(t => `<div class="ah"><span class="chip">${IC.book}${esc(t.name)}</span></div><div class="files">${A.filter(x => x.topic === t.id).map(tile).join("")}</div>`).join("");
@@ -2302,7 +2337,7 @@ function hud() {
     cards: study?.unit && D ? (u => [cap(MODE_N[study.mode]) + ", все колоды", esc(u ? u.topic_name : "Юнит")])(D.cards.find(d => d.topic === study.unit))
       : [deck !== null && D ? (study ? cap(MODE_N[study.mode]) : D.cards[deck].topic_name ? esc(D.cards[deck].subject_name + ", " + D.cards[deck].topic_name) : "Колода") : cfold ? "Папка" : D ? (due ? `${due} ${pl(due, "карточка", "карточки", "карточек")} к повторению` : nw ? `Повторять нечего, новых — ${nw}` : cst.length ? "Всё повторено" : "Колоды для зубрёжки") : "",
       deck !== null && D ? esc(D.cards[deck].name) : cfold && D ? esc((D.cards.find(d => d.subject === cfold) || {}).subject_name || "Папка") : "Карточки"],
-    files: [ffold ? "Папка" : D ? `${nf} ${pl(nf, "файл", "файла", "файлов")}` : "", ffold && D ? esc((D.files.find(f => f.subject === ffold) || {}).subject_name || "Папка") : "Файлы"],
+    files: [ffold ? "Папка" : D ? `${nf} ${pl(nf, "файл", "файла", "файлов")}` : "", ufold() && D ? esc((D.folders || []).find(f => f.id === ufold())?.name || "Папка") : ffold && D ? esc((D.files.find(f => f.subject === ffold) || {}).subject_name || "Папка") : "Файлы"],
   }[tab];
   return `<div class="row"><div><h1 class="title">${H[1]}</h1>${H[0] ? `<div class="sub">${H[0]}</div>` : ""}</div>${k ? `<button class="chip" data-wxs="1">${wxIcon(k)} ${t !== null ? sgn(t) : WXN[k][1]}</button>` : ""}</div>`;
 }
@@ -2969,7 +3004,33 @@ document.addEventListener("click", e => {
     const u = udb(); u.decks = u.decks.filter(x => x.id !== d.id); deck = null; saveU(u); haptic("light"); render(); return;
   }
   if (s.fadd !== undefined) { const i = $("fpick"); i.value = ""; i.onchange = () => i.files.length && addLocalFiles([...i.files]); i.click(); return; }
-  if (s.fdel !== undefined) { const f = fileBy(s.fdel); if (f && confirm(`Удалить «${f.name}» с телефона?`)) delLocalFile(f.path); return; }
+  if (s.fdel !== undefined) { const f = fileBy(s.fdel); if (f && confirm(`Удалить «${f.name}» с телефона?`)) { if (sheetOn()) closeSheet(); delLocalFile(f.path); } return; }
+  if (s.fmore !== undefined) { haptic("light"); fileSheet(s.fmore); return; }
+  if (s.nfold !== undefined) { const back = draft?.fpath; folderSheet(null); if (back) draft.fpath = back; return; }
+  if (s.fren !== undefined) { folderSheet(s.fren); return; }
+  if (s.save === "fold") {
+    const name = $("fname").value.trim(); if (!name) { $("fname").focus(); return; }
+    const u = udb(); let id = draft.fold;
+    if (id) { const f = u.folders.find(x => x.id === id); if (f) f.name = name; }
+    else { id = "f" + Date.now().toString(36); u.folders.push({ id, name }); if (draft.fpath) { const fl = u.files.find(x => x.path === draft.fpath); if (fl) fl.folder = id; } }
+    saveU(u); closeSheet(); haptic("ok"); toast(draft.fold ? "📁 Папка переименована" : draft.fpath ? `📁 Файл перенесён в «${name}»` : `📁 Папка «${name}» создана`); render(false); return;
+  }
+  if (s.delfold !== undefined) {
+    const u = udb(), f = u.folders.find(x => x.id === draft.fold); if (!f || !confirm(`Удалить папку «${f.name}»? Файлы из неё останутся в общем списке.`)) return;
+    u.folders = u.folders.filter(x => x !== f); u.files.forEach(x => { if (x.folder === f.id) x.folder = null; });
+    saveU(u); closeSheet(); if (ufold() === f.id) ffold = null; haptic("light"); toast("Папка удалена, файлы — в общем списке"); render(); return;
+  }
+  if (s.fmove !== undefined) {
+    const u = udb(), fl = u.files.find(x => x.path === draft.fpath); if (!fl) return;
+    fl.folder = s.fmove || null; saveU(u); closeSheet(); haptic("sel");
+    toast(s.fmove ? `📁 В папке «${u.folders.find(x => x.id === s.fmove)?.name || ""}»` : "Файл в общем списке"); render(false); return;
+  }
+  if (s.save === "frn") {
+    const v = $("frn").value.trim(); if (!v) return;
+    const u = udb(), fl = u.files.find(x => x.path === draft.fpath); if (!fl) return;
+    const ext = (/\.(\w{2,5})$/.exec(fl.name) || [])[0] || ""; fl.name = /\.\w{2,5}$/.test(v) ? v : v + ext;
+    saveU(u); closeSheet(); haptic("ok"); toast("Файл переименован"); render(false); return;
+  }
   if (s.save === "add") {
     const text = $("ntext").value.trim();
     if (!text) { $("ntext").focus(); return; }
