@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610050218">
+<meta name="app-v" content="202610051200">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -587,6 +587,10 @@ input[type="date"], input[type="time"] { min-height: 50px; -webkit-appearance: n
 .mode svg { width: 24px; height: 24px; stroke: var(--dc); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 6px; }
 .mode b { font: 600 var(--fs-16)/1.2 var(--serif); }
 .mode span { font-size: var(--fs-12); font-weight: 500; color: var(--text-2); line-height: 1.38; }
+.dirsw { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 10px; padding: 4px; border-radius: 99px; background: var(--glass); border: 1px solid var(--stroke-2); backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%); }
+.dirsw button { position: relative; z-index: 1; border: 0; background: transparent; color: var(--text-2); font-size: var(--fs-14); font-weight: 600; padding: 9px 4px; border-radius: 99px; white-space: nowrap; transition: color .3s var(--ease); }
+.dirsw button.on { color: var(--paper-ink); }
+.dirsw .dsi { position: absolute; left: 0; top: 4px; border-radius: 99px; background: var(--paper); box-shadow: 0 10px 22px -12px rgba(0,0,0,.8); pointer-events: none; z-index: 0; }
 .res .rt { font: 600 var(--fs-21)/1.2 var(--serif); }
 .btn.unitgo { width: 100%; justify-content: center; padding: 13px; font-size: var(--fs-16); border-radius: 16px; margin: 12px 0 0; }
 .res .rs { color: var(--text-2); font-weight: 500; font-size: var(--fs-14); margin-top: 5px; line-height: 1.4; }
@@ -1343,6 +1347,7 @@ function cardsIntro() {
     ringDraw(dsc); dsc.querySelectorAll(".ring .lb b").forEach(b => countUp(b, 900, 150));
     dsc.querySelectorAll(".dnum > div").forEach((d, k) => { from0(d, { opacity: 0, transform: "translateY(10px)" }, { duration: 460, delay: 120 + k * 80, easing: SPRING }); countUp(d.querySelector("b"), 700, 150 + k * 80); });
     from0(dsc.querySelector(".btn.big"), { opacity: 0, transform: "scale(.9)" }, { duration: 520, delay: 300, easing: POP });
+    const sw = m.querySelector(".dirsw"); if (sw) from0(sw, { opacity: 0, transform: `translate(${dx}px, 14px) scale(.96)` }, { duration: 520, delay: 260, easing: SPRING });
     cascade(m.querySelectorAll(".modes .mode"), { base: 320, step: 90, dx, dy: 18, sc: .94, dur: 560 });
     m.querySelectorAll(".modes .mode svg").forEach((s, k) => from0(s, { transform: "scale(0) rotate(-30deg)" }, { duration: 620, delay: 440 + k * 90, easing: POP }));
     cascade(m.querySelectorAll(":scope > .hint, :scope > .foot"), { base: 520, dy: 8 });
@@ -1444,23 +1449,34 @@ function nextDueTxt(d) {
   const n = m - T0; return n === 1 ? "завтра" : `через ${n} ${pl(n, "день", "дня", "дней")}`;
 }
 const ringOf = (pct, big, small) => { const C = 2 * Math.PI * 34; return `<div class="ring"><svg viewBox="0 0 78 78"><circle class="bg" cx="39" cy="39" r="34"/><circle class="fg" cx="39" cy="39" r="34" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct)).toFixed(1)}"/></svg><div class="lb"><b${String(big).length > 4 ? ' style="font-size:var(--fs-14)"' : ""}>${big}</b><small>${small}</small></div></div>`; };
+// направление карточек: en — видишь английское, ru — русское, mix — каждая карточка случайно; одно на все колоды, запоминается
+let cdir = store.get("cdir", "en");
+const dirSwitch = () => `<div class="dirsw" role="radiogroup" aria-label="Что показывать сначала"><i class="dsi"></i>${[["en", "EN → RU"], ["ru", "RU → EN"], ["mix", "Вперемешку"]].map(([k, t]) => `<button role="radio" aria-checked="${cdir === k}" class="${cdir === k ? "on" : ""}" data-cdir="${k}">${t}</button>`).join("")}</div>`;
+function dirPill(from) {
+  const sw = document.querySelector("#main .dirsw"), pill = sw?.querySelector(".dsi"), b = sw?.querySelector("button.on");
+  if (!pill || !b) return;
+  const t = { x: b.offsetLeft, w: b.offsetWidth };
+  Object.assign(pill.style, { top: b.offsetTop + "px", height: b.offsetHeight + "px", width: t.w + "px", transform: `translateX(${t.x}px)` });
+  if (from && MOTION) liquid(pill, from, t);
+}
 function deckScreen(d, i) {
-  const st = deckStats(d), learnN = st.due + Math.min(st.nw, NEW_PER_SESSION), pct = st.learned / st.total, nx = nextDueTxt(d), tn = Math.min(20, st.total);
+  const st = deckStats(d), learnN = st.due + Math.min(st.nw, NEW_PER_SESSION), pct = st.learned / st.total, nx = nextDueTxt(d);
   return `<section class="glass dsc" style="--dc:${deckCol(i)};--fc:${deckCol(i)}">
     <div class="dtop">${ringOf(pct, Math.round(pct * 100) + "%", "выучено")}
       <div class="dnum"><div><b>${st.due}</b><span>к повтору</span></div><div><b>${st.nw}</b><span>${pl(st.nw, "новая", "новые", "новых")}</span></div><div><b>${st.going}</b><span>в процессе</span></div></div></div>
     <button class="btn pri big" data-study="learn" ${learnN ? "" : "disabled"}>${IC.play}${learnN ? `Учить · ${learnN}` : "На сегодня всё"}</button>
     ${learnN ? "" : `<p class="dnote">${nx ? "Следующее повторение — " + nx : "Все карточки выучены"}</p>`}
   </section>
+  ${dirSwitch()}
   <div class="modes">
-    <button class="glass mode" data-study="test" style="--dc:#ffad4d">${IC.quiz}<b>Проверь себя</b><span>видишь по-русски — вспоминаешь по-английски · ${tn} ${pl(tn, "карточка", "карточки", "карточек")}</span></button>
+    <button class="glass mode" data-study="test" style="--dc:#ffad4d">${IC.quiz}<b>Проверь себя</b><span>все ${st.total} вразброс, в конце — итог и ошибки</span></button>
     <button class="glass mode" data-study="cram" style="--dc:#7cc8ff">${IC.layers}<b>Все подряд</b><span>все ${st.total} в случайном порядке, без расписания</span></button>
   </div>
   <p class="hint">«Знаю» — карточка вернётся через 1 → 3 → 7 → 14 → 30 дней, «Ещё раз» — снова в этом же заходе. Прогресс хранится ${CS ? "в облаке Telegram" : "на этом устройстве"}.</p>`;
 }
-// «Проверь себя»: сначала русская сторона (английские подсказки в скобках убираем), ответ — английская
+// русская сторона первой (английские подсказки в скобках убираем), ответ — английская
+const cy = x => { const a = (x.match(/[А-Яа-яЁё]/g) || []).length, l = (x.match(/[A-Za-zА-Яа-яЁё]/g) || []).length; return l ? a / l : 0; };
 function ruFirst(c) {
-  const cy = x => { const a = (x.match(/[А-Яа-яЁё]/g) || []).length, l = (x.match(/[A-Za-zА-Яа-яЁё]/g) || []).length; return l ? a / l : 0; };
   let [q, a] = cy(c[0]) >= cy(c[1]) ? [c[0], c[1]] : [c[1], c[0]];
   q = q.replace(/\s*\([^()]*[A-Za-z][^()]*\)/g, "").trim() || q;
   return [q, a];
@@ -1480,10 +1496,12 @@ function startStudy(mode, unit = null) {
     const fresh = []; for (let k = 0; fresh.length < NEW_PER_SESSION && nw.some(L => L.length > k); k++) for (const L of nw) if (L[k] && fresh.length < NEW_PER_SESSION) fresh.push(L[k]);   // новые — по очереди из каждой колоды
     q = due.map(x => x[2]).concat(fresh);
   } else if (mode === "retry") { q = shuffle(study.wrong.slice()); mode = "test"; }
-  else if (mode === "test") q = shuffle(all).slice(0, 20);
+  else if (mode === "test") q = shuffle(all);
   else q = shuffle(all);
   if (!q.length) { toast("Сейчас нечего повторять"); return; }
-  study = { mode, q, pos: 0, fail: new Set(), hist: [], right: 0, wrong: [], flipped: false, unit };
+  const dir = cdir, rev = {};
+  for (const p of q) rev[p.join(":")] = dir === "ru" || (dir === "mix" && Math.random() < .5);
+  study = { mode, q, rev, dir, pos: 0, fail: new Set(), hist: [], right: 0, wrong: [], flipped: false, unit };
   haptic("light"); render(); scrollTo({ top: 0 });
 }
 function answer(ok) {
@@ -1537,8 +1555,9 @@ const MODE_N = { learn: "учить", test: "проверь себя", cram: "в
 function studyView() {
   const S = study;
   if (S.pos >= S.q.length) return studyDone();
-  const p = S.q[S.pos], [d, c] = cardAt(p), x = SRS.st(d, c), [q, a] = S.mode === "test" ? ruFirst(c) : c, dc = deckCol(p[0]);
-  const lab = S.mode === "test" ? ["по-русски", "по-английски"] : [S.mode === "cram" ? "карточка" : x ? (x[0] ? "повторение" : "ещё раз") : "новая", "ответ"];
+  const p = S.q[S.pos], [d, c] = cardAt(p), x = SRS.st(d, c), [q, a] = S.rev[p.join(":")] ? ruFirst(c) : c, dc = deckCol(p[0]);
+  const lang = t => cy(t) > .5 ? "по-русски" : "по-английски", bi = cy(q) > .5 !== cy(a) > .5;   // у двуязычной карточки подпись — язык стороны
+  const lab = S.mode === "test" ? (bi ? [lang(q), lang(a)] : ["вопрос", "ответ"]) : [S.mode === "cram" ? "карточка" : x ? (x[0] ? "повторение" : "ещё раз") : "новая", bi ? lang(a) : "ответ"];
   if (S.unit) lab[0] += " · " + esc(d.name);   // в общем заходе видно, из какой колоды карточка
   const btn = S.mode === "test" ? ["Не вспомнил", "Вспомнил"] : ["Ещё раз", "Знаю"], left = S.q.length - S.pos;
   return `<div class="glass dh" style="--dc:${dc}"><button class="ar" data-sx="end" aria-label="Закончить">${IC.close}</button><div class="bar"><i style="width:${S.pos / S.q.length * 100}%"></i></div><b>${left}</b></div>
@@ -1558,7 +1577,7 @@ function studyDone() {
     return `<section class="glass dsc res" style="--fc:${col}"><div class="dtop">${ringOf(pct, `${S.right}/${n}`, Math.round(pct * 100) + "%")}
         <div><div class="rt">${pct >= .8 ? "Отлично!" : pct >= .5 ? "Неплохо" : "Надо повторить"}</div><div class="rs">${S.wrong.length ? `Невспомненные (${S.wrong.length}) попали в «Учить» — повтори их сегодня` : "Ни одной ошибки"}</div></div></div>
         ${S.wrong.length ? `<div class="miss">${S.wrong.map(p => { const [q, a] = ruFirst(cardAt(p)[1]); return `<div><span>${esc(q)}</span><b>${esc(a)}</b></div>`; }).join("")}</div>` : ""}</section>
-      <div class="cardbar">${S.wrong.length ? `<button class="btn" data-study="retry">${IC.again}Ошибки · ${S.wrong.length}</button>` : `<button class="btn" data-sx="end">${IC.close}${S.unit ? "Назад" : "К колоде"}</button>`}<button class="btn pri" data-study="test">${IC.quiz}Ещё 20</button></div>
+      <div class="cardbar">${S.wrong.length ? `<button class="btn" data-study="retry">${IC.again}Ошибки · ${S.wrong.length}</button>` : `<button class="btn" data-sx="end">${IC.close}${S.unit ? "Назад" : "К колоде"}</button>`}<button class="btn pri" data-study="test">${IC.quiz}Ещё раз</button></div>
       ${S.wrong.length ? `<div class="cardbar sub"><button class="btn ghost" data-sx="end">${S.unit ? "Назад" : "К колоде"}</button><span></span></div>` : ""}`;
   }
   const k = new Set(S.q.map(p => p.join(":"))).size;
@@ -1601,7 +1620,7 @@ function vCards() {
     const idx = decks.map((d, i) => [d, i]), reg = idx.filter(([d]) => !d.archive), arc = idx.filter(([d]) => d.archive);
     if (cfold) {
       const A = arc.filter(([d]) => d.subject === cfold);
-      return folderBar(A[0]?.[0], A.map(([d]) => d), "c") + topicsOf(A.map(([d]) => d)).map(t => {
+      return folderBar(A[0]?.[0], A.map(([d]) => d), "c") + dirSwitch() + topicsOf(A.map(([d]) => d)).map(t => {
         const T = A.filter(([d]) => d.topic === t.id), n = learnCount(T.map(([, i]) => i));
         return `<div class="ah"><span class="chip">${IC.book}${esc(t.name)}</span></div>
         ${T.length > 1 ? `<button class="btn pri unitgo" data-study="learn" data-unit="${esc(t.id)}" ${n ? "" : "disabled"}>${IC.play}${n ? `Учить все колоды · ${n}` : "Все колоды повторены"}</button>` : ""}
@@ -2304,6 +2323,7 @@ function render(animate = true) {
   if (tab === "today") { syncFocus(focusPage(), false); syncChats(chatIdx, false); }
   for (const [q, x] of keepX) { const el = x && main.querySelector(q); if (el) el.scrollLeft = x; }
   if (tab === "tasks") segPill();
+  if (tab === "cards") dirPill();
   if (animate) ({ cal: calIntro, tasks: tasksIntro, cards: cardsIntro, files: filesIntro })[tab]?.();
   $("fab").style.display = tab === "tasks" || tab === "today" || tab === "cal" ? "grid" : "none";
   syncBack();
@@ -2533,6 +2553,10 @@ document.addEventListener("click", e => {
   if (s.add !== undefined) { $("fab").onclick(); return; }
   if (s.wxs) { haptic("light"); wxSheet(); return; }
   if (s.retry !== undefined) { location.reload(); return; }
+  if (s.cdir) { if (s.cdir === cdir) return; const sw = el.parentNode, o = sw.querySelector("button.on"), from = o && { x: o.offsetLeft, w: o.offsetWidth };
+    cdir = s.cdir; store.set("cdir", cdir); haptic("sel");
+    sw.querySelectorAll("button").forEach(b => { const on = b === el; b.classList.toggle("on", on); b.setAttribute("aria-checked", on); });
+    dirPill(from); return; }
   if (s.study) { startStudy(s.study, s.unit || (study?.unit ?? null)); return; }
   if (s.ans !== undefined) { if (study) flyAnswer(s.ans === "1"); return; }
   if (s.sx === "undo") { if (study) undoAnswer(); return; }
