@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610060200">
+<meta name="app-v" content="202610060300">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -450,6 +450,9 @@ nav.dock { touch-action: none; }
 .dks { position: absolute; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 24px 48px -18px #000, 0 0 0 1px rgba(255,255,255,.06); transform-origin: 50% 50%; }
 .dkz { width: 100%; height: 100%; transform-origin: 50% 50%; }
 .dkin { width: 100%; height: 100%; overflow: hidden; }
+.dkin img, .dkti img { display: block; width: 100%; height: 100%; transform-origin: 0 0; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.dkin:empty, .dkti:empty { background: linear-gradient(100deg, #eef0f6 30%, #fff 50%, #eef0f6 70%) 0 0 / 300% 100%; animation: dkld 1.2s linear infinite; }
+@keyframes dkld { to { background-position: -150% 0; } }
 .dkh { position: absolute; right: 8px; top: 8px; padding: 3px 8px; border-radius: 99px; background: rgba(0,0,0,.55); color: #fff; font: 600 11px var(--sans); }
 .dkerr { display: grid; place-items: center; height: 100%; color: #6b7090; font: 14px var(--sans); }
 .dk.zoomed .dks { overflow: visible; }
@@ -1942,7 +1945,7 @@ async function openDeck(b, page, me) {
 function deckEnd() {
   const v = $("viewer"); v.classList.remove("vdeck", "full", "bare", "notes", "hud");
   if (V?.full) try { NATIVE?.orientation?.("portrait"); } catch (e) {}
-  try { Object.values(V.handles).forEach(h => h.dispose()); Object.values(V.thumbs).forEach(h => h.dispose()); V.dk.dispose(); } catch (e) {}
+  try { Object.values(V.handles).forEach(h => h.dispose()); V.dk.dispose(); } catch (e) {}
   removeEventListener("resize", deckResize);
   $("vbar").innerHTML = VBAR0();
 }
@@ -1955,18 +1958,30 @@ function deckLayout() {
   Object.assign(V, { sw: w, sh: h, step: w + gap, W, H });
   const t = $("dkt"); t.style.height = H + "px";
   t.querySelectorAll(".dks").forEach(el => { Object.assign(el.style, { width: w + "px", height: h + "px", left: (W - w) / 2 + "px", top: (H - h) / 2 + "px" }); });
-  for (const [i, hd] of Object.entries(V.handles)) { hd.dispose(); delete V.handles[i]; t.querySelector(`.dks[data-i="${i}"] .dkin`).innerHTML = ""; }
   deckRender();
 }
 function deckResize() { if (V?.kind === "deck") { deckLayout(); deckGo(V.i, false); } }
-// рисуем текущий и соседние (±2), дальние освобождаем
+// слайд показываем готовой векторной картинкой (её делает lib/deck.js): живой слайд из сотен слоёв с тенями и масками
+// Android-браузер на части телефонов собирает с ошибками — куски пропадают, миниатюры не совпадают с большим слайдом
 function deckRender() {
-  const dk = V.dk, sc = V.sw / dk.width;
+  const dk = V.dk, me = V;
   for (let i = 0; i < dk.count; i++) {
-    const near = Math.abs(i - V.i) <= 2, el = $("dkt").querySelector(`.dks[data-i="${i}"] .dkin`);
-    if (near && !V.handles[i]) { try { V.handles[i] = dk.render(i, el, sc); } catch (e) { el.innerHTML = '<div class="dkerr">Не удалось показать слайд</div>'; } }
-    else if (!near && V.handles[i]) { V.handles[i].dispose(); delete V.handles[i]; el.innerHTML = ""; }
+    const d = Math.abs(i - V.i), el = $("dkt").querySelector(`.dks[data-i="${i}"] .dkin`);
+    if (d > 2 || el.dataset.s) continue;
+    el.dataset.s = "1";
+    dk.snap(i, d ? 1 : 0).then(u => {
+      if (V !== me) return;
+      if (u) { el.innerHTML = `<img src="${u}" alt="" draggable="false">`; if (i === V.i) deckSharp(); }
+      else { try { V.handles[i] = dk.render(i, el, V.sw / dk.width); } catch (e) { el.innerHTML = '<div class="dkerr">Не удалось показать слайд</div>'; } }   // запасной путь — живой слайд
+    });
   }
+}
+// приближение: картинку слайда рисуем в бо́льшем разрешении, чтобы текст оставался чётким
+function deckSharp() {
+  const im = $("dkt")?.querySelector(`.dks[data-i="${V.i}"] img`); if (!im) return;
+  const k = Math.min(4, Math.ceil(V.z - .05));
+  if (+im.dataset.k === k) return;
+  im.dataset.k = k; Object.assign(im.style, { width: k * 100 + "%", height: k * 100 + "%", transform: k > 1 ? `scale(${1 / k})` : "" });
 }
 function deckGo(i, anim = true) {
   const dk = V.dk, prev = V.i; i = Math.max(0, Math.min(dk.count - 1, i));
@@ -2013,16 +2028,17 @@ function deckZoom(z, px, py, anim) {
   el.style.transition = anim && MOTION ? "transform .32s cubic-bezier(.2,.8,.2,1)" : "none";
   el.style.transform = `translate(${px}px, ${py}px) scale(${z})`;
   $("dk").classList.toggle("zoomed", z > 1.02);
+  clearTimeout(deckZoom.t); deckZoom.t = setTimeout(deckSharp, anim ? 340 : 120);
 }
 // миниатюры рисуем, когда они видны в ленте
 function deckThumbs() {
-  const th = $("dkth"), dk = V.dk, tw = 84, sc = tw / dk.width;
+  const th = $("dkth"), dk = V.dk, tw = 84, me = V;
   th.querySelectorAll(".dkti").forEach(el => { el.style.width = tw + "px"; el.style.height = tw * dk.height / dk.width + "px"; });
   const io = new IntersectionObserver(es => es.forEach(e => {
     if (!e.isIntersecting || !V || V.kind !== "deck") return;
-    const i = +e.target.dataset.dkt; if (V.thumbs[i]) return;
-    try { V.thumbs[i] = dk.render(i, e.target.querySelector(".dkti"), sc); } catch (_) {}
+    const i = +e.target.dataset.dkt, box = e.target.querySelector(".dkti");
     io.unobserve(e.target);
+    dk.snap(i, 2).then(u => { if (V === me && u) box.innerHTML = `<img src="${u}" alt="" draggable="false">`; });   // та же картинка, что и большой слайд
   }), { root: th, rootMargin: "0px 200px" });
   th.querySelectorAll(".dktb").forEach(b => io.observe(b));
 }
