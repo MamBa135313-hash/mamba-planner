@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com https://api.met.no; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610061100">
+<meta name="app-v" content="202610061200">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -248,6 +248,10 @@ main { max-width: 640px; margin: 0 auto; padding: 8px 14px 0; }
 .ls[data-ls] { cursor: pointer; } .ls[data-ls]:active .b { opacity: .7; }
 button.hw { display: block; width: 100%; text-align: left; color: var(--text); font-family: inherit; cursor: pointer; }
 .lsh h4 { margin: 8px 0 2px; } .lsh .pill { background: color-mix(in srgb, var(--c) 22%, transparent); }
+.attf { width: 100%; justify-content: center; margin-top: 10px; }
+.hwf { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .hwf:empty { display: none; } .hwf .pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hwf .x { border: 0; background: none; color: inherit; font-size: 16px; line-height: 1; padding: 0 0 0 6px; cursor: pointer; }
+.hwn { font-size: var(--fs-12); opacity: .8; white-space: nowrap; }
 .quick.hwto { grid-template-columns: 1fr 1fr; }
 .hw { margin-top: 8px; padding: 8px 11px; border-radius: 12px; font-size: var(--fs-14); font-weight: 550; background: color-mix(in srgb, var(--c) 13%, transparent); border: 1px solid color-mix(in srgb, var(--c) 30%, transparent); }
 
@@ -879,7 +883,11 @@ function offD(u = udb()) {
 function saveU(u) { store.set("offlineDB", u); const did = deck !== null && D?.cards?.[deck] ? deckId(D.cards[deck]) : null; D = offD(u); if (did) { const i = D.cards.findIndex(x => deckId(x) === did); deck = i >= 0 ? i : null; } }
 function applyLocal(o) {
   const u = udb(), t = u.tasks.find(x => x.id === o.id);
-  if (o.op === "add") u.tasks.push({ id: u.nextId++, text: o.text, date: o.date || null, time: o.time || null, imp: !!o.imp, approx: false, bell: false, files: [], src: "" });
+  if (o.op === "add") {
+    const id = u.nextId++;
+    u.tasks.push({ id, text: o.text, date: o.date || null, time: o.time || null, imp: !!o.imp, approx: false, bell: false, files: o.files || [], src: "" });
+    for (const g of o.files || []) { const f = u.files.find(x => x.path === g.path); if (f) { f.task = id; f.task_text = o.text; } }
+  }
   else if (!t) return;
   else if (o.op === "done") u.tasks = u.tasks.filter(x => x !== t);
   else if (o.op === "tmr" && t.date) t.date = iso(add(P(t.date), 1));
@@ -890,16 +898,29 @@ function applyLocal(o) {
 // файлы с телефона — в IndexedDB (localStorage для них мал)
 const idb = () => new Promise((ok, no) => { const q = indexedDB.open("mini-files", 1); q.onupgradeneeded = () => q.result.createObjectStore("f"); q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error); });
 async function idbDo(mode, fn) { const db = await idb(); return new Promise((ok, no) => { const tx = db.transaction("f", mode), r = fn(tx.objectStore("f")); tx.oncomplete = () => ok(r?.result); tx.onerror = () => no(tx.error); }); }
-async function addLocalFiles(list) {
-  const u = udb(); let n = 0;
+// кладёт файлы в IndexedDB и в список «Файлов»; extra — привязка (задача, папка); возвращает {name, kind, path} для задачи
+async function storeLocalFiles(list, extra = {}) {
+  const u = udb(), out = [];
   for (const file of list) {
     const ext = (/\.(\w{2,5})$/.exec(file.name) || [])[1]?.toLowerCase() || (file.type.startsWith("image/") ? "jpg" : "bin");
-    const path = "local/" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + "." + ext;
+    const path = "local/" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + "." + ext, kind = file.type.startsWith("image/") ? "photo" : "doc";
     await idbDo("readwrite", st => st.put(file, path));
-    u.files.unshift({ name: file.name, kind: file.type.startsWith("image/") ? "photo" : "doc", path, enc: "local", local: true, task: null, task_text: "", folder: ufold() }); n++;
+    u.files.unshift({ name: file.name, kind, path, enc: "local", local: true, task: null, task_text: "", folder: null, ...extra }); out.push({ name: file.name, kind, path });
   }
-  saveU(u); haptic("ok"); toast(n === 1 ? "📎 Файл сохранён на телефоне" : `📎 Сохранено файлов: ${n}`); render(false);
+  saveU(u); return out;
 }
+async function addLocalFiles(list) {
+  const n = (await storeLocalFiles(list, { folder: ufold() })).length;
+  haptic("ok"); toast(n === 1 ? "📎 Файл сохранён на телефоне" : `📎 Сохранено файлов: ${n}`); render(false);
+}
+// файлы к задаче/ДЗ: прикрепить к уже существующей задаче
+async function attachToTask(id, list) {
+  const got = await storeLocalFiles(list), u = udb(), t = u.tasks.find(x => x.id === id); if (!t) return;
+  t.files = (t.files || []).concat(got);
+  for (const g of got) { const f = u.files.find(x => x.path === g.path); if (f) { f.task = id; f.task_text = t.text; } }
+  saveU(u); haptic("ok"); toast(got.length === 1 ? "📎 Файл прикреплён" : `📎 Прикреплено файлов: ${got.length}`); render(false); taskSheet(id);
+}
+const pickFiles = () => new Promise(ok => { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.hidden = true; document.body.appendChild(i); i.onchange = () => { ok([...i.files]); i.remove(); }; i.click(); });
 // свои папки в «Файлах» (только в автономной версии): ffold = "u:<id>" — открыта своя папка
 const ufold = () => (ffold && String(ffold).startsWith("u:")) ? ffold.slice(2) : null;
 const FOLDER_SVG = '<svg class="fi" viewBox="0 0 64 50"><path class="bk" d="M4 8a5 5 0 0 1 5-5h14l6 6h26a5 5 0 0 1 5 5v29a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path class="fr" d="M4 18a5 5 0 0 1 5-5h46a5 5 0 0 1 5 5v25a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/></svg>';
@@ -1121,16 +1142,18 @@ function lessonSheet(ds, st) {
   const l = (lessons(ds) || []).find(x => x.s === st); if (!l) return;
   const T = tasks().filter(t => !t.done && t.date === ds && t.time === st), nx = l.vuc ? null : nextLesson(ds, l.n);
   const nowPast = ds < today() || (ds === today() && mins(l.s) <= nowMin());
-  draft = { ls: { ds, l }, nx, to: nowPast && nx ? "next" : "this", imp: false };
+  draft = { ls: { ds, l }, nx, to: nowPast && nx ? "next" : "this", imp: false, hwFiles: [] };
   const day = d => `${WD[P(d).getDay()].toLowerCase()} ${ddmm(d)}`;
   sheet(`<div style="--c:${colOf(l)}"><div class="lsh"><span class="pill">${day(ds)} · ${esc(l.s)}–${esc(l.e)}</span><h4>${l.vuc ? "🎖 " : ""}${esc(l.n)}</h4><p>${esc(l.m || "")}${l.who ? " · " + esc(l.who) : ""}</p></div>
     ${T.length ? `<label class="f">Домашнее задание</label>${T.map(t => `<button class="hw" data-tkt="${esc(t.id)}">📝 ${t.imp ? "❗️ " : ""}${esc(hwText(t, l))}</button>`).join("")}` : ""}
     <label class="f">${T.length ? "Ещё задание" : "Добавить домашнее задание"}</label>
     <textarea id="hwtext" placeholder="Например: упр. 4 a, b; выучить слова Unit 2"></textarea>
+    ${OFFLINE ? `<div class="hwf" id="hwfiles"></div><button class="btn ghost attf" data-hwfile>📎 Прикрепить файл</button>` : ""}
     ${nx ? `<div class="quick hwto"><button class="btn ${draft.to === "this" ? "on" : ""}" data-hwto="this">К этой паре<small>${day(ds)}</small></button><button class="btn ${draft.to === "next" ? "on" : ""}" data-hwto="next">К следующей<small>${day(nx.ds)}, ${esc(nx.l.s)}</small></button></div>` : ""}
     <div class="toggle" data-tg="imp"><span>❗️ Важное<small>контрольная, срез, сдача</small></span><div class="sw" id="nimp"></div></div>
     <button class="btn pri go" data-save="hw">${IC.check}Добавить ДЗ</button></div>`);
 }
+function hwFilesShow() { const b = $("hwfiles"); if (b) b.innerHTML = (draft.hwFiles || []).map((f, i) => `<span class="pill acc">📎 ${esc(f.name)}<button class="x" data-hwfrm="${i}" aria-label="Убрать">×</button></span>`).join(""); }
 function timeline(ds, due = []) {
   const L = lessons(ds);
   if (L === null) return empty("📭", "Расписания на этот день нет", `Загружено до ${nice(D.schedule.valid_until)}. ${OFFLINE ? "Новое расписание придёт с обновлением приложения." : "Пришли боту новое — скрин, PDF или текст."}`);
@@ -1142,7 +1165,7 @@ function timeline(ds, due = []) {
     return `<div class="ls ${past ? "past" : ""} ${cur ? "cur" : ""}" style="--c:${colOf(l)}" data-ls="${ds}|${esc(l.s)}" role="button" aria-label="${esc(l.n)}: домашнее задание">
       <div class="t">${esc(l.s)}<small>${esc(l.e)}</small></div><div class="rail"><i></i></div>
       <div class="b"><div class="n">${l.vuc ? "🎖 " : ""}${esc(l.n)}${cur ? ' <span class="pill live">идёт</span>' : ""}</div><div class="m">${esc(l.m)}${l.who ? " · " + esc(l.who) : ""}</div>
-      ${hw.map(t => `<button class="hw" data-tkt="${esc(t.id)}">📝 ${typeof t.id === "number" ? `<b>#${t.id}</b> ` : ""}${t.imp ? "❗️ " : ""}${esc(hwText(t, l))}</button>`).join("")}</div></div>`;
+      ${hw.map(t => `<button class="hw" data-tkt="${esc(t.id)}">📝 ${typeof t.id === "number" ? `<b>#${t.id}</b> ` : ""}${t.imp ? "❗️ " : ""}${esc(hwText(t, l))}${t.files?.length ? ` <span class="hwn">📎${t.files.length > 1 ? " " + t.files.length : ""}</span>` : ""}</button>`).join("")}</div></div>`;
   }).join("")}</div>`;
 }
 
@@ -1322,6 +1345,7 @@ function taskSheet(id) {
     <h4 class="${t.text.length > 60 ? "long" : ""}">${esc(t.text)}</h4><div class="tm">${pills.join("")}</div>
     ${t.src ? `<p style="margin-top:10px">${esc(t.src)}</p>` : ""}
     ${(t.files || []).map(fileChip).join("")}
+    ${OFFLINE && nid !== null ? `<button class="btn ghost attf" data-tattach="${nid}">📎 Прикрепить файл</button>` : ""}
     ${nid !== null ? `<div class="acts"><button class="btn pri" data-done="${nid}">${IC.check}Сделано</button>${t.date ? `<button class="btn" data-tmr="${nid}">${IC.alarm}На завтра</button>` : ""}<button class="btn" data-move="${nid}">${IC.move}Перенести</button><button class="btn" data-imp="${nid}">${IC.flag}${t.imp ? "Не важно" : "Важно"}</button></div>` : ""}</div>`);
 }
 
@@ -3193,10 +3217,16 @@ document.addEventListener("click", e => {
     saveU(u); closeSheet(); haptic("ok"); toast("Файл переименован"); render(false); return;
   }
   if (s.hwto !== undefined) { draft.to = s.hwto; document.querySelectorAll(".hwto .btn").forEach(b => b.classList.toggle("on", b === el)); haptic("sel"); return; }
+  if (s.hwfile !== undefined) { pickFiles().then(L => { if (!L.length) return; draft.hwFiles.push(...L); hwFilesShow(); haptic("sel"); }); return; }
+  if (s.hwfrm !== undefined) { draft.hwFiles.splice(+s.hwfrm, 1); hwFilesShow(); return; }
+  if (s.tattach !== undefined) { const id = +s.tattach; pickFiles().then(L => L.length && attachToTask(id, L)); return; }
   if (s.save === "hw") {
-    const text = $("hwtext").value.trim(); if (!text) { $("hwtext").focus(); return; }
-    const tg = draft.to === "next" && draft.nx ? draft.nx : draft.ls;
-    closeSheet(); addOp({ op: "add", n: Date.now() % 1e6, text: `${tg.l.n}: ${text}`, date: tg.ds, time: tg.l.s, imp: draft.imp }, `📝 ДЗ к паре ${ddmm(tg.ds)}, ${tg.l.s}`); return;
+    const text = $("hwtext").value.trim(); if (!text && !draft.hwFiles?.length) { $("hwtext").focus(); return; }
+    const tg = draft.to === "next" && draft.nx ? draft.nx : draft.ls, imp = draft.imp, F = draft.hwFiles || [];
+    const full = `${tg.l.n}: ${text || (F.length === 1 ? F[0].name : "материалы")}`;
+    closeSheet();
+    (F.length ? storeLocalFiles(F) : Promise.resolve([])).then(files => addOp({ op: "add", n: Date.now() % 1e6, text: full, date: tg.ds, time: tg.l.s, imp, files }, `📝 ДЗ к паре ${ddmm(tg.ds)}, ${tg.l.s}${files.length ? ` · 📎 ${files.length}` : ""}`));
+    return;
   }
   if (s.save === "add") {
     const text = $("ntext").value.trim();
