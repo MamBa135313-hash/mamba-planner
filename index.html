@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com https://api.met.no; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610060900">
+<meta name="app-v" content="202610061000">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -245,6 +245,10 @@ main { max-width: 640px; margin: 0 auto; padding: 8px 14px 0; }
 .ls .n { font-weight: 650; font-size: var(--fs-16); line-height: 1.3; }
 .ls .m { font-size: var(--fs-14); color: var(--text-2); margin-top: 3px; font-weight: 450; }
 .ls.past { opacity: .5; }
+.ls[data-ls] { cursor: pointer; } .ls[data-ls]:active .b { opacity: .7; }
+button.hw { display: block; width: 100%; text-align: left; color: var(--text); font-family: inherit; cursor: pointer; }
+.lsh h4 { margin: 8px 0 2px; } .lsh .pill { background: color-mix(in srgb, var(--c) 22%, transparent); }
+.quick.hwto { grid-template-columns: 1fr 1fr; }
 .hw { margin-top: 8px; padding: 8px 11px; border-radius: 12px; font-size: var(--fs-14); font-weight: 550; background: color-mix(in srgb, var(--c) 13%, transparent); border: 1px solid color-mix(in srgb, var(--c) 30%, transparent); }
 
 /* ---------- пилюли и кнопки ---------- */
@@ -1106,6 +1110,27 @@ const taskList = L => L.map(taskEl).join("");
 // файл задачи: открыть (фото, PDF, Word/Excel/PowerPoint через PDF-копию) или сохранить
 const fileChip = f => { const g = fileBy(f.path); return g?.enc ? `<button class="pill acc fpill" data-${viewable(g) ? "fview" : "fdl"}="${esc(f.path)}">📎 ${esc(dispName(f))} · ${viewable(g) ? "открыть" : "сохранить"}</button>` : `<div class="pill acc fpill">📎 ${esc(dispName(f))}</div>`; };
 
+// ---------- ДЗ к паре: нажал на пару → карточка пары, её ДЗ и «Добавить ДЗ» (к этой паре или к следующей по предмету) ----------
+const hwText = (t, l) => { const n = (l?.n || "").toLowerCase(), x = t.text; return n && x.toLowerCase().startsWith(n + ":") ? x.slice(n.length + 1).trim() : x; };   // в задачах «Предмет: …», под парой — без повтора предмета
+function nextLesson(ds, name) {   // следующее занятие по тому же предмету после ds
+  const S = D.schedule, end = S.valid_until || iso(add(P(ds), 120));
+  for (let d = add(P(ds), 1), k = 0; iso(d) <= end && k < 200; d = add(d, 1), k++) { const L = lessons(iso(d)) || []; const l = L.find(x => !x.vuc && x.n === name); if (l) return { ds: iso(d), l }; }
+  return null;
+}
+function lessonSheet(ds, st) {
+  const l = (lessons(ds) || []).find(x => x.s === st); if (!l) return;
+  const T = tasks().filter(t => !t.done && t.date === ds && t.time === st), nx = l.vuc ? null : nextLesson(ds, l.n);
+  const nowPast = ds < today() || (ds === today() && mins(l.s) <= nowMin());
+  draft = { ls: { ds, l }, nx, to: nowPast && nx ? "next" : "this", imp: false };
+  const day = d => `${WD[P(d).getDay()].toLowerCase()} ${ddmm(d)}`;
+  sheet(`<div style="--c:${colOf(l)}"><div class="lsh"><span class="pill">${day(ds)} · ${esc(l.s)}–${esc(l.e)}</span><h4>${l.vuc ? "🎖 " : ""}${esc(l.n)}</h4><p>${esc(l.m || "")}${l.who ? " · " + esc(l.who) : ""}</p></div>
+    ${T.length ? `<label class="f">Домашнее задание</label>${T.map(t => `<button class="hw" data-tkt="${esc(t.id)}">📝 ${t.imp ? "❗️ " : ""}${esc(hwText(t, l))}</button>`).join("")}` : ""}
+    <label class="f">${T.length ? "Ещё задание" : "Добавить домашнее задание"}</label>
+    <textarea id="hwtext" placeholder="Например: упр. 4 a, b; выучить слова Unit 2"></textarea>
+    ${nx ? `<div class="quick hwto"><button class="btn ${draft.to === "this" ? "on" : ""}" data-hwto="this">К этой паре<small>${day(ds)}</small></button><button class="btn ${draft.to === "next" ? "on" : ""}" data-hwto="next">К следующей<small>${day(nx.ds)}, ${esc(nx.l.s)}</small></button></div>` : ""}
+    <div class="toggle" data-tg="imp"><span>❗️ Важное<small>контрольная, срез, сдача</small></span><div class="sw" id="nimp"></div></div>
+    <button class="btn pri go" data-save="hw">${IC.check}Добавить ДЗ</button></div>`);
+}
 function timeline(ds, due = []) {
   const L = lessons(ds);
   if (L === null) return empty("📭", "Расписания на этот день нет", `Загружено до ${nice(D.schedule.valid_until)}. ${OFFLINE ? "Новое расписание придёт с обновлением приложения." : "Пришли боту новое — скрин, PDF или текст."}`);
@@ -1114,10 +1139,10 @@ function timeline(ds, due = []) {
   return `<div class="tl">${L.map(l => {
     const past = isT && mins(l.e) <= nowM, cur = isT && mins(l.s) <= nowM && nowM < mins(l.e);
     const hw = due.filter(t => t.time === l.s && !used.has(t.id)); hw.forEach(t => used.add(t.id));
-    return `<div class="ls ${past ? "past" : ""} ${cur ? "cur" : ""}" style="--c:${colOf(l)}">
+    return `<div class="ls ${past ? "past" : ""} ${cur ? "cur" : ""}" style="--c:${colOf(l)}" data-ls="${ds}|${esc(l.s)}" role="button" aria-label="${esc(l.n)}: домашнее задание">
       <div class="t">${esc(l.s)}<small>${esc(l.e)}</small></div><div class="rail"><i></i></div>
       <div class="b"><div class="n">${l.vuc ? "🎖 " : ""}${esc(l.n)}${cur ? ' <span class="pill live">идёт</span>' : ""}</div><div class="m">${esc(l.m)}${l.who ? " · " + esc(l.who) : ""}</div>
-      ${hw.map(t => `<div class="hw">📝 <b>#${t.id}</b> ${t.imp ? "❗️ " : ""}${esc(t.text)}</div>`).join("")}</div></div>`;
+      ${hw.map(t => `<button class="hw" data-tkt="${esc(t.id)}">📝 ${typeof t.id === "number" ? `<b>#${t.id}</b> ` : ""}${t.imp ? "❗️ " : ""}${esc(hwText(t, l))}</button>`).join("")}</div></div>`;
   }).join("")}</div>`;
 }
 
@@ -3073,7 +3098,7 @@ document.addEventListener("pointercancel", endGesture);
 // ---------- нажатия ----------
 document.addEventListener("click", e => {
   if (Date.now() - noClick < 400) return;
-  const el = e.target.closest("button, [data-open], [data-wxs], #flip, .toggle");
+  const el = e.target.closest("button, [data-open], [data-wxs], [data-ls], #flip, .toggle");
   if (!el) return;
   const s = el.dataset;
   if (s.tab) { goTab(s.tab, true); return; }
@@ -3094,7 +3119,8 @@ document.addEventListener("click", e => {
   if (s.dp !== undefined) { syncChats(+s.dp, true); return; }
   if (s.fp !== undefined) { store.set("focusPage", { d: today(), i: +s.fp }); syncFocus(+s.fp, true); haptic("sel"); return; }
   if (s.go) { const [t, f] = s.go.split(":"); haptic("sel"); tab = t; if (f) filter = f; deck = null; study = null; selDay = null; render(); scrollTo({ top: 0 }); return; }
-  if (s.tkt !== undefined) { haptic("light"); taskSheet(s.tkt); return; }
+  if (s.tkt !== undefined) { haptic("light"); if (sheetOn()) { closeSheet(); setTimeout(() => taskSheet(s.tkt), 260); } else taskSheet(s.tkt); return; }
+  if (s.ls !== undefined) { const [d, t] = s.ls.split("|"); haptic("light"); lessonSheet(d, t); return; }
   if (s.done) { el.classList.add("pop"); markDone(+s.done, el); if (el.closest(".sheet")) setTimeout(closeSheet, 250); return; }
   if ((s.tmr || s.imp) && el.closest(".sheet")) closeSheet();
   if (s.tmr) { addOp({ op: "tmr", id: +s.tmr }, "⏰ #" + s.tmr + " — на завтра"); return; }
@@ -3165,6 +3191,12 @@ document.addEventListener("click", e => {
     const u = udb(), fl = u.files.find(x => x.path === draft.fpath); if (!fl) return;
     const ext = (/\.(\w{2,5})$/.exec(fl.name) || [])[0] || ""; fl.name = /\.\w{2,5}$/.test(v) ? v : v + ext;
     saveU(u); closeSheet(); haptic("ok"); toast("Файл переименован"); render(false); return;
+  }
+  if (s.hwto !== undefined) { draft.to = s.hwto; document.querySelectorAll(".hwto .btn").forEach(b => b.classList.toggle("on", b === el)); haptic("sel"); return; }
+  if (s.save === "hw") {
+    const text = $("hwtext").value.trim(); if (!text) { $("hwtext").focus(); return; }
+    const tg = draft.to === "next" && draft.nx ? draft.nx : draft.ls;
+    closeSheet(); addOp({ op: "add", n: Date.now() % 1e6, text: `${tg.l.n}: ${text}`, date: tg.ds, time: tg.l.s, imp: draft.imp }, `📝 ДЗ к паре ${ddmm(tg.ds)}, ${tg.l.s}`); return;
   }
   if (s.save === "add") {
     const text = $("ntext").value.trim();
