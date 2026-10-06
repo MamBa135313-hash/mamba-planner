@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <!-- безопасность: адрес с ключом не передаётся сторонним сайтам; страница может обращаться только к своему сайту и к погоде -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://api.open-meteo.com https://api.met.no; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="app-v" content="202610060600">
+<meta name="app-v" content="202610060900">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2444,14 +2444,45 @@ const WX_URL = "https://api.open-meteo.com/v1/forecast?latitude=55.67&longitude=
 const WXK = c => c <= 0 ? "clear" : c <= 2 ? "partly" : c === 3 ? "cloudy" : c <= 48 ? "fog" : c <= 57 ? "drizzle" : c <= 67 ? "rain" : c <= 77 ? "snow" : c <= 82 ? "rain" : c <= 86 ? "snow" : "storm";
 const WXN = { clear: ["☀️", "ясно"], partly: ["⛅", "переменная облачность"], cloudy: ["☁️", "пасмурно"], fog: ["🌫", "туман"], drizzle: ["🌦", "морось"], rain: ["🌧", "дождь"], snow: ["🌨", "снег"], storm: ["⛈", "гроза"] };
 let W = null;
+// погода из двух источников: Open-Meteo (Германия, хостинг Hetzner — в России без VPN часто недоступен) и met.no
+// (Норвежский метеоинститут); какой ответил — запоминаем и в следующий раз спрашиваем его первым
+const WX_LAT = 55.67, WX_LON = 37.49;
+const getJSON = async (url, ms) => { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms); try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); } finally { clearTimeout(t); } };
+async function wxOpenMeteo(ms) {
+  const w = await getJSON(WX_URL, ms), c = w.current, h = w.hourly;
+  return { time: c.time, temp: c.temperature_2m, feels: c.apparent_temperature, code: c.weather_code, is_day: c.is_day, precip: c.precipitation, wind: c.wind_speed_10m, sunrise: w.daily.sunrise[0], sunset: w.daily.sunset[0], live: true, src: "om",
+    hourly: h ? { time: h.time, t: h.temperature_2m, pp: h.precipitation_probability, pr: h.precipitation, code: h.weather_code, wind: h.wind_speed_10m } : null };
+}
+// восход и заход — считаем сами (формула NOAA), чтобы не зависеть от ещё одного сервера; время — московское
+function sunTimes(ds) {
+  const rad = Math.PI / 180, d = new Date(ds + "T12:00:00Z"), n = Math.floor((d - Date.UTC(d.getUTCFullYear(), 0, 0)) / 864e5);
+  const g = 2 * Math.PI / 365 * (n - 1), eq = 229.18 * (.000075 + .001868 * Math.cos(g) - .032077 * Math.sin(g) - .014615 * Math.cos(2 * g) - .040849 * Math.sin(2 * g));
+  const dec = .006918 - .399912 * Math.cos(g) + .070257 * Math.sin(g) - .006758 * Math.cos(2 * g) + .000907 * Math.sin(2 * g) - .002697 * Math.cos(3 * g) + .00148 * Math.sin(3 * g);
+  const ha = Math.acos(Math.cos(90.833 * rad) / (Math.cos(WX_LAT * rad) * Math.cos(dec)) - Math.tan(WX_LAT * rad) * Math.tan(dec)) / rad;
+  const at = m => { const t = Math.round(m + 180); return `${ds}T${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };   // +180 мин — Москва
+  return [at(720 - 4 * (WX_LON + ha) - eq), at(720 - 4 * (WX_LON - ha) - eq)];
+}
+// значки met.no → коды WMO, которые понимает остальной код
+const METNO = { clearsky: 0, fair: 1, partlycloudy: 2, cloudy: 3, fog: 45, lightrain: 61, rain: 63, heavyrain: 65, lightrainshowers: 80, rainshowers: 81, heavyrainshowers: 82,
+  lightsleet: 66, sleet: 67, heavysleet: 67, lightsleetshowers: 66, sleetshowers: 67, heavysleetshowers: 67, lightsnow: 71, snow: 73, heavysnow: 75, lightsnowshowers: 85, snowshowers: 85, heavysnowshowers: 86 };
+const metCode = sym => { const k = String(sym || "").replace(/_(day|night|polartwilight)$/, ""); return /thunder/.test(k) ? 95 : METNO[k] ?? 3; };
+async function wxMetNo(ms) {
+  const w = await getJSON(`https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${WX_LAT}&lon=${WX_LON}`, ms), T = w.properties.timeseries;
+  const msk = iso => { const d = new Date(Date.parse(iso) + 3 * 36e5); return d.toISOString().slice(0, 16); };
+  const hr = T.filter(x => x.data.next_1_hours).slice(0, 48), now = T[0], det = now.data.instant.details, n1 = now.data.next_1_hours || now.data.next_6_hours || {};
+  const e = det.relative_humidity / 100 * 6.105 * Math.exp(17.27 * det.air_temperature / (237.7 + det.air_temperature));   // «ощущается» — по Стедману
+  const today = msk(now.time).slice(0, 10), [sunrise, sunset] = sunTimes(today), tm = msk(now.time);
+  return { time: tm, temp: Math.round(det.air_temperature * 10) / 10, feels: Math.round((det.air_temperature + .33 * e - .7 * det.wind_speed - 4) * 10) / 10, code: metCode(n1.summary?.symbol_code),
+    is_day: tm >= sunrise && tm < sunset ? 1 : 0, precip: n1.details?.precipitation_amount ?? 0, wind: det.wind_speed * 3.6, sunrise, sunset, live: true, src: "met",
+    hourly: { time: hr.map(x => msk(x.time)), t: hr.map(x => x.data.instant.details.air_temperature), pp: hr.map(x => x.data.next_1_hours.details?.probability_of_precipitation ?? 0),
+      pr: hr.map(x => x.data.next_1_hours.details?.precipitation_amount ?? 0), code: hr.map(x => metCode(x.data.next_1_hours.summary?.symbol_code)), wind: hr.map(x => x.data.instant.details.wind_speed * 3.6) } };
+}
 async function liveWeather() {
-  try {
-    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 7000);
-    const w = await (await fetch(WX_URL, { signal: ctl.signal })).json(), c = w.current;
-    const h = w.hourly;
-    return { time: c.time, temp: c.temperature_2m, feels: c.apparent_temperature, code: c.weather_code, is_day: c.is_day, precip: c.precipitation, wind: c.wind_speed_10m, sunrise: w.daily.sunrise[0], sunset: w.daily.sunset[0], live: true,
-      hourly: h ? { time: h.time, t: h.temperature_2m, pp: h.precipitation_probability, pr: h.precipitation, code: h.weather_code, wind: h.wind_speed_10m } : null };
-  } catch (e) { return null; }
+  const first = store.get("wxSrc", "om"), L = first === "met" ? [wxMetNo, wxOpenMeteo] : [wxOpenMeteo, wxMetNo];
+  for (const [k, f] of L.entries()) {
+    try { const w = await f(k ? 9000 : 5000); store.set("wxSrc", w.src); return w; } catch (e) {}
+  }
+  return null;
 }
 // ---------- погода × пары: «возьми зонт» ----------
 // Смотрим почасовой прогноз в моменты, когда ты на улице: дорога к первой паре (за 45 мин), к ВУЦ, дорога домой.
